@@ -77,17 +77,48 @@ class Program:
         def run(self, program):
             match self.opcode:
                 case "MOVE":
-                    match self.get_arg(0).value:
+                    temp_var = Program.Frame.Var()
+                    # Checking symbol
+                    match self.get_arg(1).get_type():
                         case "var":
-                            pass
+                            match self.get_arg(1).get_frame():
+                                case "GF":
+                                    check_var_declaration(self, program.global_frame, 1)
+                                    check_var_definition(self, program.global_frame, 1)
+                                    temp_var.set_value(program.global_frame.vars[self.get_arg(1).get_arg_name()])
+                                case "LF":
+                                    # need change probably
+                                    check_var_declaration(self, program.global_frame, 1)
+                                    check_var_definition(self, program.local_frame, 1)
+                                    temp_var.set_value(program.global_frame.vars[self.get_arg(1).get_arg_name()])
+                                case "TF": # maybe shouldnt even be here, needs check !!!
+                                    # need change probably
+                                    check_var_declaration(self, program.global_frame, 1)
+                                    check_var_definition(self, program.temp_frame, 1)
+                                    temp_var = program.temp_frame.vars[self.get_arg(1).get_var_name()]
+                                    temp_var.set_value(program.global_frame.vars[self.get_arg(1).get_arg_name()])
                         case "int":
-                            pass
+                            temp_var.set_value(int(self.get_arg(1).get_arg_name()))
                         case "bool":
-                            pass
+                            temp_var.set_value(bool(self.get_arg(1).get_arg_name()))
                         case "string":
-                            pass
+                            temp_var.set_value(str(self.get_arg(1).get_arg_name()))
                         case "nil":
-                            pass
+                            temp_var.set_value(None)
+                        
+                    temp_var.set_type(self.get_arg(1).get_type())
+
+                    match self.get_arg(0).get_frame():
+                        case "GF":
+                            check_var_declaration(self, program.global_frame, 0)
+                            program.global_frame.vars[self.get_arg(0).get_arg_name()] = temp_var
+                        case "LF":
+                            check_var_declaration(self, program.local_frame, 0)
+                            program.local_frame.vars[self.get_arg(0).get_arg_name()] = temp_var
+                        case "TF":
+                            check_var_declaration(self, program.temp_frame, 0)
+                            program.temp_frame.vars[self.get_arg(0).get_arg_name()] = temp_var
+
                 case "NOT":
                     pass
                 case "INT2CHAR":
@@ -107,16 +138,16 @@ class Program:
                 case "BREAK":
                     pass
                 case "DEFVAR":
-                    match self.get_arg(0).value[:2]:
+                    match self.get_arg(0).get_frame():
                         case "GF":
-                            program.global_frame.add_var(self.get_arg(0).value[3:])
+                            program.global_frame.add_var(self.get_arg(0).get_arg_name())
                         case "LF":
                             program.local_frame = program.Frame(TypeFrame.LOCAL)
-                            program.local_frame.add_var(self.get_arg(0).value[3:])
+                            program.local_frame.add_var(self.get_arg(0).get_arg_name())
                             program.frame_stack.push(program.local_frame)
                         case "TF":
                             program.temp_frame = program.Frame(TypeFrame.TEMP)
-                            program.temp_frame.add_var(self.get_arg(0).value[3:])
+                            program.temp_frame.add_var(self.get_arg(0).get_arg_name())
                 case "POPS":
                     pass
                 case "CALL":
@@ -178,6 +209,20 @@ class Program:
                 self.type: str = type
                 self.value = value
 
+            def get_type(self):
+                return self.type
+
+            # only returns something when argument is variable
+            def get_frame(self):
+                if self.type == "var":
+                    return self.value[:2]
+
+            def get_arg_name(self):
+                if self.type == "var":
+                    return self.value[3:]
+                else:
+                    return self.value
+
             # for debugging
             def __str__(self):
                 return f"{self.type} {self.value}"
@@ -203,8 +248,17 @@ class Program:
                 self.type: str = type
                 self.value = value
 
+            def get_type(self):
+                return self.type
+
             def set_type(self, type):
                 self.type = type
+
+            def get_frame(self):
+                return super().type
+
+            def get_value(self):
+                return self.value
 
             def set_value(self, value):
                 self.value = value
@@ -502,11 +556,23 @@ def check_xml_attrib_type(arg, regex):
         exit(32) 
     return arg.attrib["type"]
 
+def check_var_declaration(instruction, frame, arg_index):
+    if instruction.get_arg(arg_index).get_arg_name() not in frame.vars:
+        print("ERROR: Variable not declared", file=sys.stderr)
+        exit(54)
+
+def check_var_definition(instruction, frame, arg_index):
+    if frame.vars[instruction.get_arg(arg_index).get_arg_name()].get_type() is None:
+        print("ERROR: Variable not defined", file=sys.stderr)
+        exit(56)
+
 def gen_program(xml_root):
     program = Program()
     for instr in xml_root:
         instr_obj = Program.Instruction(instr.attrib["opcode"], instr.attrib["order"])
         for arg in instr:
+            if arg.text is None: 
+                arg.text = ""
             arg_obj = Program.Instruction.Argument(arg.attrib["type"], arg.text)
             instr_obj.add_arg(arg_obj)
         program.add_instr(instr_obj)
