@@ -1,25 +1,59 @@
 #!/usr/bin/python3.10
 import argparse, re, os.path, sys
 import xml.etree.ElementTree as ET
+from collections import deque
 from enum import Enum
+
+# Stack implementation using deque
+class Stack:
+    def __init__(self):
+        self.stack = deque()
+    
+    def push(self, data):
+        self.stack.append(data)
+
+    def pop(self):
+        return self.stack.pop()
+    
+    def top(self):
+        return self.stack[-1]
+    
+    def empty(self):
+        self.stack.clear()
 
 class Program:
     def  __init__(self):
         self.instructions = []
-        self.data_stack = []
-        self.frame_stack = []
+        self.data_stack = Stack()
+        self.frame_stack = Stack()
         self.global_frame = self.Frame(TypeFrame.GLOBAL) 
         self.local_frame = None
         self.temp_frame = None
 
+    # maybe put instructior of Instruction class inside this method
     def add_instr(self, instr):
         self.instructions.append(instr)
 
-    def add_data(self, data):
-        self.data_stack.append(data)
+    def get_instr(self, order):
+        for instr in self.instructions:
+            if instr.order == order:
+                return instr
+        return None
 
-    def add_local_frame(self, frame):
-        self.frame_stack.append(frame)
+    # for debugging
+    def print_frames(self):
+        print("[GLOBAL FRAME]")
+        self.global_frame.print()
+        print("[LOCAL FRAME]")
+        if self.local_frame is not None:
+            self.local_frame.print()
+        else:
+            print("Not initialized")
+        print("[TEMP FRAME]")
+        if self.temp_frame is not None:
+            self.temp_frame.print()
+        else:
+            print("Not initialized")
 
     # for debugging
     def __str__(self):
@@ -35,8 +69,105 @@ class Program:
             if arg is not None:
                 self.args.append(arg)
 
-        def run(self):
-            pass
+        def get_arg(self, index):
+            if index < len(self.args):
+                return self.args[index]
+            return None
+
+        def run(self, program):
+            match self.opcode:
+                case "MOVE":
+                    match self.get_arg(0).value:
+                        case "var":
+                            pass
+                        case "int":
+                            pass
+                        case "bool":
+                            pass
+                        case "string":
+                            pass
+                        case "nil":
+                            pass
+                case "NOT":
+                    pass
+                case "INT2CHAR":
+                    pass
+                case "STRLEN":
+                    pass
+                case "TYPE":
+                    pass
+                case "CREATEFRAME":
+                    pass
+                case "PUSHFRAME":
+                    pass
+                case "POPFRAME":
+                    pass
+                case "RETURN":
+                    pass
+                case "BREAK":
+                    pass
+                case "DEFVAR":
+                    match self.get_arg(0).value[:2]:
+                        case "GF":
+                            program.global_frame.add_var(self.get_arg(0).value[3:])
+                        case "LF":
+                            program.local_frame = program.Frame(TypeFrame.LOCAL)
+                            program.local_frame.add_var(self.get_arg(0).value[3:])
+                            program.frame_stack.push(program.local_frame)
+                        case "TF":
+                            program.temp_frame = program.Frame(TypeFrame.TEMP)
+                            program.temp_frame.add_var(self.get_arg(0).value[3:])
+                case "POPS":
+                    pass
+                case "CALL":
+                    pass
+                case "LABEL":
+                    pass
+                case "JUMP":
+                    pass
+                case "PUSHS":
+                    pass
+                case "WRITE":
+                    pass
+                case "EXIT":
+                    pass
+                case "DPRINT":
+                    pass
+                case "ADD":
+                    pass
+                case "SUB":
+                    pass
+                case "MUL":
+                    pass
+                case "IDIV":
+                    pass
+                case "LT":
+                    pass
+                case "GT":
+                    pass
+                case "EQ":
+                    pass
+                case "AND":
+                    pass
+                case "OR":
+                    pass
+                case "STRI2INT":
+                    pass
+                case "CONCAT":
+                    pass
+                case "GETCHAR":
+                    pass
+                case "SETCHAR":
+                    pass
+                case "READ":
+                    pass
+                case "JUMPIFEQ":
+                    pass
+                case "JUMPIFNEQ":
+                    pass
+                case _:
+                    print("ERROR: Unknown instruction", file=sys.stderr)
+                    exit(32)
 
         # for debugging
         def __str__(self):
@@ -54,14 +185,33 @@ class Program:
     class Frame:
         def __init__(self,type):
             self.vars = {}
-            self.type = type
+            self.type: TypeFrame = type
 
-        def add_var(self, var):
-            self.vars[var] = None
+        def add_var(self, var_name):
+            self.vars[var_name] = self.Var()
+
+        def print(self):
+            for var in self.vars:
+                print(var, self.vars[var])
 
         # for debugging
         def __str__(self):
             return f"{self.vars}"
+
+        class Var:
+            def __init__(self, type=None, value=None):
+                self.type: str = type
+                self.value = value
+
+            def set_type(self, type):
+                self.type = type
+
+            def set_value(self, value):
+                self.value = value
+
+            # for debugging
+            def __str__(self):
+                return f"{self.type} {self.value}"
 
 class TypeFrame(Enum):
     GLOBAL = 0
@@ -314,7 +464,6 @@ def check_var_re(var_value):
 def check_symb_re(symb_value, symb_type):
     # if symb_value is None, we set it to empty string
     symb_value = "" if symb_value is None else symb_value
-
     match symb_type:
         case "var":
             if re.match(r"^(GF|LF|TF)@([a-zA-Z]|_|-|\$|&|%|\*|!|\?)([a-zA-Z0-9]|_|-|\$|&|%|\*|!|\?)*$", symb_value) is None:
@@ -363,6 +512,16 @@ def gen_program(xml_root):
         program.add_instr(instr_obj)
     return program
 
+def check_order_attribute(program):
+    # check duplicate order attributes
+    dup_list = []
+    for instr in program.instructions:
+        if instr.order in dup_list:
+            print("ERROR: Duplicate order attribute", file=sys.stderr)
+            exit(32)
+        dup_list.append(instr.order)
+
+
 def sort_by_order(program):
     program.instructions.sort(key=lambda instr: int(instr.order))
     return program
@@ -373,16 +532,20 @@ def print_program():
         for arg in instr.args:
             print(arg.type, arg.value)
 
+# Maybe just do it simply like this and do the rest in instruction class
 def run_program(program):
-    pass
+    for instruction in program.instructions:
+        instruction.run(program)
 
+    program.print_frames()
 
 if __name__ == "__main__":
     xml_root, input = parse_sc_args()
     check_xml(xml_root)
     gen_program(xml_root)
     prg = gen_program(xml_root)
+    check_order_attribute(prg)
     prg = sort_by_order(prg)
-    print_program()
+    #print_program()
     run_program(prg)
     exit(0)
