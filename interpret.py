@@ -15,10 +15,12 @@ class Stack:
         self._stack.append(data)
 
     def pop(self):
-        return self._stack.pop()
+        if len(self._stack) > 0:
+            return self._stack.pop()
     
     def top(self):
-        return self._stack[-1]
+        if len(self._stack) > 0:
+            return self._stack[-1]
     
     def empty(self):
         self._stack.clear()
@@ -37,21 +39,13 @@ class Program:
     def add_instr(self, instr):
         self.instructions.append(instr)
 
-    # get instruction by order
-    def get_instr(self, order):
-        for instr in self.instructions:
-            if instr.order == order:
-                return instr
-        return None
-
     # get global frame
     def gf(self):
         return self._global_frame
 
     # get local frame
     def lf(self):
-        if len(self._frame_stack._stack) > 0:
-            return self._frame_stack.top()
+        return self._frame_stack.top()
     
     # set local frame
     def set_lf(self, frame):
@@ -59,8 +53,19 @@ class Program:
 
     # pop local frame
     def pop_lf(self):
-        if len(self._frame_stack._stack) > 0:
-            self._frame_stack.pop() 
+        self._frame_stack.pop() 
+
+    # push symb to data stack
+    def push_data(self, symb):
+        self._data_stack.push(symb)
+
+    # pop symb from data stack
+    def pop_data(self):
+        return self._data_stack.pop()
+
+    # get top symb from data stack
+    def top_data(self):
+        return self._data_stack.top()
 
     # get temp frame
     def tf(self):
@@ -98,10 +103,20 @@ class Program:
         return f"{self.instructions}"
 
     class Instruction:
-        def __init__(self, opcode=None, order=None):
-            self.opcode: str = opcode
-            self.order: int = order
+        def __init__(self, address=None, opcode=None, order=None):
+            self._address: int = address
+            self._opcode: str = opcode
+            self._order: int = order
             self.args = []
+
+        def get_address(self):
+            return self._address
+
+        def get_opcode(self):
+            return self._opcode
+
+        def get_order(self):
+            return self._order
         
         def add_arg(self, arg):
             if arg is not None:
@@ -151,47 +166,47 @@ class Program:
                 "JUMPIFNEQ": program.Jumpifneq
             }
             program.inc_pc()
-            return opcode_to_class[self.opcode].execute(self,program)
+            return opcode_to_class[self.get_opcode()].execute(self,program)
 
         class Argument:
             def __init__(self, type=None, value=None):
-                self.type: str = type
-                if self.type == "var":
-                    self.value: str = value
-                elif self.type == "int":
+                self._type: str = type
+                if self._type == "var":
+                    self._value: str = value
+                elif self._type == "int":
                     if re.match(r"^[-+]?[1-9][0-9]*$", value):
-                       self.value: int = int(value) 
+                       self._value: int = int(value) 
                     elif re.match(r"^[+-]?(0x|0X)?[0-9]+$", value):
-                        self.value: int = int(value, 16)
+                        self._value: int = int(value, 16)
                     elif re.match(r"^[+-]?0[0-7]+$", value):
-                        self.value: int = int(value, 8)
-                elif self.type == "bool":
+                        self._value: int = int(value, 8)
+                elif self._type == "bool":
                     if value == "true":
-                        self.value: bool = True
+                        self._value: bool = True
                     else:
-                        self.value: bool = False
-                elif self.type == "string":
-                    self.value: str = value
+                        self._value: bool = False
+                elif self._type == "string":
+                    self._value: str = value
                 else:
-                    self.value = ""
+                    self._value = ""
 
             def get_type(self):
-                return self.type
+                return self._type
 
             # only returns something when argument is variable
             def get_frame(self):
-                if self.type == "var":
-                    return self.value[:2]
+                if self._type == "var":
+                    return self._value[:2]
 
             def get_arg_name(self):
-                if self.type == "var":
-                    return self.value[3:]
+                if self._type == "var":
+                    return self._value[3:]
                 else:
-                    return self.value
+                    return self._value
 
             # for debugging
             def __str__(self):
-                return f"{self.type} {self.value}"
+                return f"{self._type} {self._value}"
 
     class Move(Instruction):
         def execute(self, program):
@@ -234,13 +249,47 @@ class Program:
             frame.get_var(self.get_arg(0).get_arg_name()).set_type("bool")
             frame.get_var(self.get_arg(0).get_arg_name()).set_value(not value)
         
+    # Converts number to unicode character
     class Int2char(Instruction):
         def execute(self, program):
-            pass
+            if self.get_arg(1).get_type() == "var":
+                frame = choose_frame_both(self, program, 1)
+                if frame.get_var(self.get_arg(1).get_arg_name()).get_type() == "int":
+                    value = frame.get_var(self.get_arg(1).get_arg_name()).get_value()
+                else:
+                    print("ERROR: Wrong type of variable", file=sys.stderr)
+                    exit(53)
+            elif self.get_arg(1).get_type() == "int":
+                value = self.get_arg(1).get_arg_name()
+            else:
+                print("ERROR: Wrong type of variable", file=sys.stderr)
+                exit(53)
+
+            frame = choose_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_name()).set_type("string")
+            try:
+                frame.get_var(self.get_arg(0).get_arg_name()).set_value(chr(value))
+            except ValueError:
+                print("ERROR: Wrong value of variable", file=sys.stderr)
+                exit(58)
         
     class Strlen(Instruction):
         def execute(self, program):
-            pass
+            if self.get_arg(1).get_type() == "var":
+                frame = choose_frame_both(self, program, 1)
+                if frame.get_var(self.get_arg(1).get_arg_name()).get_type() == "string":
+                    value = frame.get_var(self.get_arg(1).get_arg_name()).get_value()
+                else:
+                    print("ERROR: Wrong type of variable", file=sys.stderr)
+                    exit(53)
+            elif self.get_arg(1).get_type() == "string":
+                value = self.get_arg(1).get_arg_name()
+            else:
+                print("ERROR: Wrong type of variable", file=sys.stderr)
+                exit(53)
+            frame = choose_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_name()).set_type("int")
+            frame.get_var(self.get_arg(0).get_arg_name()).set_value(len(value))
         
     class Type(Instruction):
         def execute(self, program):
@@ -254,6 +303,7 @@ class Program:
                 type = self.get_arg(1).get_type()
             # Checking variable
             frame = choose_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_name()).set_type("string")
             frame.get_var(self.get_arg(0).get_arg_name()).set_value(str(type))
 
     class Createframe(Instruction):
@@ -284,27 +334,32 @@ class Program:
         def execute(self, program):
             pass
 
-    class Defvar(Instruction): #defvar type var, also add enums for vartype, argtype 
+    class Defvar(Instruction): 
         def execute(self, program):
             if self.get_arg(0).get_frame() == "GF":
                 check_var_exists(self.get_arg(0).get_arg_name(), program.gf())
-                program.gf().add_var(self.get_arg(0).get_arg_name(), self.get_arg(0).get_type())
+                program.gf().add_var(self.get_arg(0).get_arg_name(), "var")
             elif self.get_arg(0).get_frame() == "LF":
                 if program.lf() is None:
                     print("ERROR: Local frame not initialized")
                     exit(55)
                 check_var_exists(self.get_arg(0).get_arg_name(), program.lf())
-                program.lf().add_var(self.get_arg(0).get_arg_name(), self.get_arg(0).get_type())
+                program.lf().add_var(self.get_arg(0).get_arg_name(), "var")
             elif self.get_arg(0).get_frame() == "TF":
                 if program.tf() is None:
                     print("ERROR: Temp frame not initialized")
                     exit(55)
                 check_var_exists(self.get_arg(0).get_arg_name(), program.tf())
-                program.tf().add_var(self.get_arg(0).get_arg_name(), self.get_arg(0).get_type())
+                program.tf().add_var(self.get_arg(0).get_arg_name(), "var")
 
     class Pops(Instruction):
         def execute(self, program):
-            pass
+            frame = choose_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_name()).set_type(program.top_data().get_type())
+            if program.top_data().get_type() == "var":
+                frame.get_var(self.get_arg(0).get_arg_name()).set_value(program.pop_data().get_value())
+            else:
+                frame.get_var(self.get_arg(0).get_arg_name()).set_value(program.pop_data().get_arg_name())
         
     class Call(Instruction):
         def execute(self, program):
@@ -320,7 +375,11 @@ class Program:
         
     class Pushs(Instruction):
         def execute(self, program):
-            pass
+            if self.get_arg(0).get_type() == "var":
+                frame = choose_frame_both(self, program, 0)
+                program.push_data(frame.get_var(self.get_arg(0).get_arg_name()))
+            else:
+                program.push_data(self.get_arg(0))
         
     class Write(Instruction):
         def execute(self, program):
@@ -429,7 +488,7 @@ class Program:
     class Frame:
         def __init__(self,type):
             self.vars = {}
-            self.type: TypeFrame = type
+            self._type: TypeFrame = type
 
         def add_var(self, var_name, type=None):
             self.vars[var_name] = self.Var(type)
@@ -471,6 +530,7 @@ class Program:
             def __str__(self):
                 return f"{self._value}"
 
+# Types of frames
 class TypeFrame(Enum):
     GLOBAL = 0
     LOCAL = 1
@@ -581,41 +641,43 @@ def choose_frame_both(instruction, program, arg_index):
 # Generates program structure from XML
 def gen_program(xml_root):
     program = Program()
+    address = 0
     for instr in xml_root:
-        instr_obj = Program.Instruction(instr.attrib["opcode"], instr.attrib["order"])
+        instr_obj = Program.Instruction(address, instr.attrib["opcode"], instr.attrib["order"])
         for arg in instr:
             if arg.text is None: 
                 arg.text = ""
             arg_obj = Program.Instruction.Argument(arg.attrib["type"], arg.text)
             instr_obj.add_arg(arg_obj)
         program.add_instr(instr_obj)
+        address += 1
     return program
 
 # Checks if order attributes are without duplicates
 def check_order_attribute(program):
     dup_list = []
     for instr in program.instructions:
-        if instr.order in dup_list:
+        if instr.get_order() in dup_list:
             print("ERROR: Duplicate order attribute", file=sys.stderr)
             exit(32)
-        dup_list.append(instr.order)
+        dup_list.append(instr.get_order())
 
 # Sorts instructions by order attribute
 def sort_by_order(program):
-    program.instructions.sort(key=lambda instr: int(instr.order))
+    program.instructions.sort(key=lambda instr: int(instr.get_order()))
     return program
 
 # Prints program
 def print_program():
     for instr in prg.instructions:
-        print(instr.order+": ",instr.opcode)
+        print(instr.get_order()+": ",instr.get_order())
         for arg in instr.args:
-            print(arg.type, arg.value)
+            print(arg.get_type(), arg.get_arg_name())
 
 # change this to normal for loop and loop through addresses of instructions
 def run_program(program):
-    for instruction in program.instructions:
-        instruction.execute(program)
+    for instr in program.instructions:
+        instr.execute(program)
 
     #program.print_frames()
 
