@@ -4,54 +4,92 @@ import xml.etree.ElementTree as ET
 from collections import deque
 from enum import Enum
 
+import check_xml
+
 # Stack implementation using deque
 class Stack:
     def __init__(self):
-        self.stack = deque()
+        self._stack = deque()
     
     def push(self, data):
-        self.stack.append(data)
+        self._stack.append(data)
 
     def pop(self):
-        return self.stack.pop()
+        return self._stack.pop()
     
     def top(self):
-        return self.stack[-1]
+        return self._stack[-1]
     
     def empty(self):
-        self.stack.clear()
+        self._stack.clear()
 
 class Program:
     def  __init__(self):
         self.instructions = []
-        self.data_stack = Stack()
-        self.frame_stack = Stack()
-        self.global_frame = self.Frame(TypeFrame.GLOBAL) 
-        self.local_frame = None
-        self.temp_frame = None
+        self._data_stack = Stack()
+        self._frame_stack = Stack()
+        self._call_stack = Stack() #
+        self._global_frame = self.Frame(TypeFrame.GLOBAL) 
+        self._temp_frame = None
+        self._program_counter = 0
 
-    # maybe put instructior of Instruction class inside this method
+    # add instruction to program
     def add_instr(self, instr):
         self.instructions.append(instr)
 
+    # get instruction by order
     def get_instr(self, order):
         for instr in self.instructions:
             if instr.order == order:
                 return instr
         return None
 
+    # get global frame
+    def gf(self):
+        return self._global_frame
+
+    # get local frame
+    def lf(self):
+        if len(self._frame_stack._stack) > 0:
+            return self._frame_stack.top()
+    
+    # set local frame
+    def set_lf(self, frame):
+        self._frame_stack.push(frame)
+
+    # pop local frame
+    def pop_lf(self):
+        if len(self._frame_stack._stack) > 0:
+            self._frame_stack.pop() 
+
+    # get temp frame
+    def tf(self):
+        return self._temp_frame
+
+    # set temp frame
+    def set_tf(self, frame):
+        self._temp_frame = frame
+
+    # get program counter
+    def get_pc(self):
+        return self._program_counter
+    
+    # increment program counter
+    def inc_pc(self):
+        self._program_counter += 1
+
     # for debugging
     def print_frames(self):
         print("[GLOBAL FRAME]")
-        self.global_frame.print()
+        self.gf().print()
         print("[LOCAL FRAME]")
-        if self.local_frame is not None:
-            self.local_frame.print()
+        if self.lf() is not None:
+            self.lf().print()
         else:
             print("Not initialized")
         print("[TEMP FRAME]")
-        if self.temp_frame is not None:
-            self.temp_frame.print()
+        if self.tf() is not None:
+            self.tf().print()
         else:
             print("Not initialized")
 
@@ -74,140 +112,68 @@ class Program:
                 return self.args[index]
             return None
 
-        def run(self, program):
-            match self.opcode:
-                case "MOVE":
-                    temp_var = Program.Frame.Var()
-                    # Checking symbol
-                    match self.get_arg(1).get_type():
-                        case "var":
-                            match self.get_arg(1).get_frame():
-                                case "GF":
-                                    check_var_declaration(self, program.global_frame, 1)
-                                    check_var_definition(self, program.global_frame, 1)
-                                    temp_var.set_value(program.global_frame.vars[self.get_arg(1).get_arg_name()])
-                                case "LF":
-                                    # need change probably
-                                    check_var_declaration(self, program.global_frame, 1)
-                                    check_var_definition(self, program.local_frame, 1)
-                                    temp_var.set_value(program.global_frame.vars[self.get_arg(1).get_arg_name()])
-                                case "TF": # maybe shouldnt even be here, needs check !!!
-                                    # need change probably
-                                    check_var_declaration(self, program.global_frame, 1)
-                                    check_var_definition(self, program.temp_frame, 1)
-                                    temp_var = program.temp_frame.vars[self.get_arg(1).get_var_name()]
-                                    temp_var.set_value(program.global_frame.vars[self.get_arg(1).get_arg_name()])
-                        case "int":
-                            temp_var.set_value(int(self.get_arg(1).get_arg_name()))
-                        case "bool":
-                            temp_var.set_value(bool(self.get_arg(1).get_arg_name()))
-                        case "string":
-                            temp_var.set_value(str(self.get_arg(1).get_arg_name()))
-                        case "nil":
-                            temp_var.set_value(None)
-                        
-                    temp_var.set_type(self.get_arg(1).get_type())
-
-                    match self.get_arg(0).get_frame():
-                        case "GF":
-                            check_var_declaration(self, program.global_frame, 0)
-                            program.global_frame.vars[self.get_arg(0).get_arg_name()] = temp_var
-                        case "LF":
-                            check_var_declaration(self, program.local_frame, 0)
-                            program.local_frame.vars[self.get_arg(0).get_arg_name()] = temp_var
-                        case "TF":
-                            check_var_declaration(self, program.temp_frame, 0)
-                            program.temp_frame.vars[self.get_arg(0).get_arg_name()] = temp_var
-
-                case "NOT":
-                    pass
-                case "INT2CHAR":
-                    pass
-                case "STRLEN":
-                    pass
-                case "TYPE":
-                    pass
-                case "CREATEFRAME":
-                    pass
-                case "PUSHFRAME":
-                    pass
-                case "POPFRAME":
-                    pass
-                case "RETURN":
-                    pass
-                case "BREAK":
-                    pass
-                case "DEFVAR":
-                    match self.get_arg(0).get_frame():
-                        case "GF":
-                            program.global_frame.add_var(self.get_arg(0).get_arg_name())
-                        case "LF":
-                            program.local_frame = program.Frame(TypeFrame.LOCAL)
-                            program.local_frame.add_var(self.get_arg(0).get_arg_name())
-                            program.frame_stack.push(program.local_frame)
-                        case "TF":
-                            program.temp_frame = program.Frame(TypeFrame.TEMP)
-                            program.temp_frame.add_var(self.get_arg(0).get_arg_name())
-                case "POPS":
-                    pass
-                case "CALL":
-                    pass
-                case "LABEL":
-                    pass
-                case "JUMP":
-                    pass
-                case "PUSHS":
-                    pass
-                case "WRITE":
-                    pass
-                case "EXIT":
-                    pass
-                case "DPRINT":
-                    pass
-                case "ADD":
-                    pass
-                case "SUB":
-                    pass
-                case "MUL":
-                    pass
-                case "IDIV":
-                    pass
-                case "LT":
-                    pass
-                case "GT":
-                    pass
-                case "EQ":
-                    pass
-                case "AND":
-                    pass
-                case "OR":
-                    pass
-                case "STRI2INT":
-                    pass
-                case "CONCAT":
-                    pass
-                case "GETCHAR":
-                    pass
-                case "SETCHAR":
-                    pass
-                case "READ":
-                    pass
-                case "JUMPIFEQ":
-                    pass
-                case "JUMPIFNEQ":
-                    pass
-                case _:
-                    print("ERROR: Unknown instruction", file=sys.stderr)
-                    exit(32)
-
-        # for debugging
-        def __str__(self):
-            return f"{self.opcode} {self.args}"
+        def execute(self, program):
+            opcode_to_class = {
+                "MOVE": program.Move,
+                "NOT": program.Not,
+                "INT2CHAR": program.Int2char,
+                "STRLEN": program.Strlen,
+                "TYPE": program.Type,
+                "CREATEFRAME": program.Createframe,
+                "PUSHFRAME": program.Pushframe,
+                "POPFRAME": program.Popframe,
+                "RETURN": program.Return,
+                "BREAK": program.Break,
+                "DEFVAR": program.Defvar,
+                "POPS": program.Pops,
+                "CALL": program.Call,
+                "LABEL": program.Label,
+                "JUMP": program.Jump,
+                "PUSHS": program.Pushs,
+                "WRITE": program.Write,
+                "EXIT": program.Exit,
+                "DPRINT": program.Dprint,
+                "ADD": program.Add,
+                "SUB": program.Sub,
+                "MUL": program.Mul,
+                "IDIV": program.Idiv,
+                "LT": program.Lt,
+                "GT": program.Gt,
+                "EQ": program.Eq,
+                "AND": program.And,
+                "OR": program.Or,
+                "STRI2INT": program.Str2int,
+                "CONCAT": program.Concat,
+                "GETCHAR": program.Getchar,
+                "SETCHAR": program.Setchar,
+                "READ": program.Read,
+                "JUMPIFEQ": program.Jumpifeq,
+                "JUMPIFNEQ": program.Jumpifneq
+            }
+            program.inc_pc()
+            return opcode_to_class[self.opcode].execute(self,program)
 
         class Argument:
             def __init__(self, type=None, value=None):
                 self.type: str = type
-                self.value = value
+                if self.type == "var":
+                    self.value: str = value
+                elif self.type == "int":
+                    if re.match(r"^[-+]?[1-9][0-9]*$", value):
+                       self.value: int = int(value) 
+                    elif re.match(r"^[+-]?(0x|0X)?[0-9]+$", value):
+                        self.value: int = int(value, 16)
+                    elif re.match(r"^[+-]?0[0-7]+$", value):
+                        self.value: int = int(value, 8)
+                elif self.type == "bool":
+                    if value == "true":
+                        self.value: bool = True
+                    else:
+                        self.value: bool = False
+                elif self.type == "string":
+                    self.value: str = value
+                else:
+                    self.value = ""
 
             def get_type(self):
                 return self.type
@@ -227,14 +193,253 @@ class Program:
             def __str__(self):
                 return f"{self.type} {self.value}"
 
+    class Move(Instruction):
+        def execute(self, program):
+            temp_var = Program.Frame.Var()
+            # Checking symbol
+            if self.get_arg(1).get_type() == "var":
+                frame = choose_frame_both(self, program, 1)
+                temp_var.set_value(frame.get_var(self.get_arg(1).get_arg_name()))
+            elif self.get_arg(1).get_type() == "int":
+                temp_var.set_value(int(self.get_arg(1).get_arg_name()))
+            elif self.get_arg(1).get_type() == "bool":
+                temp_var.set_value(bool(self.get_arg(1).get_arg_name()))
+            elif self.get_arg(1).get_type() == "string":
+                temp_var.set_value(str(self.get_arg(1).get_arg_name()))
+            elif self.get_arg(1).get_type() == "nil":
+                temp_var.set_value(None)
+                        
+            temp_var.set_type(self.get_arg(1).get_type())
+            # Checking variable
+            frame = choose_frame_declare(self, program, 0)
+            frame.set_var(self.get_arg(0).get_arg_name(), temp_var)
+        
+    class Not(Instruction):
+        def execute(self, program):
+            # Checking symbol
+            if self.get_arg(1).get_type() == "var":
+                frame = choose_frame_both(self, program, 1)
+                if frame.get_var(self.get_arg(1).get_arg_name()).get_type() == "bool":
+                    value = frame.get_var(self.get_arg(1).get_arg_name()).get_value()
+                else:
+                    print("ERROR: Wrong type of variable", file=sys.stderr)
+                    exit(53)
+            elif self.get_arg(1).get_type() == "bool":
+                value = self.get_arg(1).get_arg_name()
+            else:
+                print("ERROR: Wrong type of variable", file=sys.stderr)
+                exit(53)
+            # Checking variable and setting value, (*) Maybe need to check type of variable? !!!
+            frame = choose_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_name()).set_type("bool")
+            frame.get_var(self.get_arg(0).get_arg_name()).set_value(not value)
+        
+    class Int2char(Instruction):
+        def execute(self, program):
+            pass
+        
+    class Strlen(Instruction):
+        def execute(self, program):
+            pass
+        
+    class Type(Instruction):
+        def execute(self, program):
+            # Checking symbol and getting its type
+            type = ""
+            if self.get_arg(1).get_type() == "var":
+                frame = choose_frame_declare(self, program, 1)
+                if frame.vars[self.get_arg(1).get_arg_name()].get_value() is not None:
+                    type = frame.get_var(self.get_arg(1).get_arg_name()).get_type()
+            else:
+                type = self.get_arg(1).get_type()
+            # Checking variable
+            frame = choose_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_name()).set_value(str(type))
+
+    class Createframe(Instruction):
+        def execute(self, program):
+            program.set_tf(program.Frame(TypeFrame.TEMP))
+    
+    class Pushframe(Instruction):
+        def execute(self, program):
+            if program.tf() is None:
+                print("ERROR: Temp frame not initialized")
+                exit(55)
+            program.set_lf(program.tf())
+            program.set_tf(None)
+        
+    class Popframe(Instruction):
+        def execute(self, program):
+            if program.lf() is None:
+                print("ERROR: Local frame not initialized")
+                exit(55)
+            program.set_tf(program.lf())
+            program.pop_lf()
+        
+    class Return(Instruction):
+        def execute(self, program):
+            pass
+        
+    class Break(Instruction):
+        def execute(self, program):
+            pass
+
+    class Defvar(Instruction): #defvar type var, also add enums for vartype, argtype 
+        def execute(self, program):
+            if self.get_arg(0).get_frame() == "GF":
+                check_var_exists(self.get_arg(0).get_arg_name(), program.gf())
+                program.gf().add_var(self.get_arg(0).get_arg_name(), self.get_arg(0).get_type())
+            elif self.get_arg(0).get_frame() == "LF":
+                if program.lf() is None:
+                    print("ERROR: Local frame not initialized")
+                    exit(55)
+                check_var_exists(self.get_arg(0).get_arg_name(), program.lf())
+                program.lf().add_var(self.get_arg(0).get_arg_name(), self.get_arg(0).get_type())
+            elif self.get_arg(0).get_frame() == "TF":
+                if program.tf() is None:
+                    print("ERROR: Temp frame not initialized")
+                    exit(55)
+                check_var_exists(self.get_arg(0).get_arg_name(), program.tf())
+                program.tf().add_var(self.get_arg(0).get_arg_name(), self.get_arg(0).get_type())
+
+    class Pops(Instruction):
+        def execute(self, program):
+            pass
+        
+    class Call(Instruction):
+        def execute(self, program):
+            pass
+    
+    class Label(Instruction):
+        def execute(self, program):
+            pass
+
+    class Jump(Instruction):
+        def execute(self, program):
+            pass
+        
+    class Pushs(Instruction):
+        def execute(self, program):
+            pass
+        
+    class Write(Instruction):
+        def execute(self, program):
+            if self.get_arg(0).get_type() == "var":
+                frame = choose_frame_both(self, program, 0)
+                if frame.get_var(self.get_arg(0).get_arg_name()).get_type() == "bool":
+                    if frame.get_var(self.get_arg(0).get_arg_name()).get_value():
+                        print("true", end='')
+                    else:
+                        print("false", end='')
+                else:
+                    print(frame.get_var(self.get_arg(0).get_arg_name()).get_value(), end='')
+            elif self.get_arg(0).get_type() == "bool":
+                if self.get_arg(0).get_arg_name():
+                    print("true", end='')
+                else:
+                    print("false", end='')
+            elif self.get_arg(0).get_type() == "nil":
+                print("", end='')
+            else:
+                print(self.get_arg(0).get_arg_name(), end='')
+
+    class Exit(Instruction):
+        def execute(self, program):
+            if self.get_arg(0).get_type() == "var":
+                frame = choose_frame_both(self, program, 0)
+                exit(frame.get_var(self.get_arg(0).get_arg_name()).get_value())
+            elif self.get_arg(0).get_type() == "int":
+                if int(self.get_arg(0).get_arg_name()) >= 0 and int(self.get_arg(0).get_arg_name()) <= 49:
+                    exit(int(self.get_arg(0).get_arg_name()))
+                else:
+                    print("ERROR: Wrong exit code")
+                    exit(57)
+            else:
+                print("ERROR: Wrong type of argument")
+                exit(53)
+
+    class Dprint(Instruction):
+        def execute(self, program):
+            pass
+
+    class Add(Instruction):
+        def execute(self, program):
+            pass
+
+    class Sub(Instruction):
+        def execute(self, program):
+            pass
+
+    class Mul(Instruction):
+        def execute(self, program):
+            pass
+
+    class Idiv(Instruction):
+        def execute(self, program):
+            pass
+
+    class Lt(Instruction):
+        def execute(self, program):
+            pass
+
+    class Gt(Instruction):
+        def execute(self, program):
+            pass
+
+    class Eq(Instruction):
+        def execute(self, program):
+            pass
+
+    class And(Instruction):
+        def execute(self, program):
+            pass
+
+    class Or(Instruction):
+        def execute(self, program):
+            pass
+
+    class Str2int(Instruction):
+        def execute(self, program):
+            pass
+
+    class Concat(Instruction):
+        def execute(self, program):
+            pass
+
+    class Getchar(Instruction):
+        def execute(self, program):
+            pass
+
+    class Setchar(Instruction):
+        def execute(self, program):
+            pass
+
+    class Read(Instruction):
+        def execute(self, program):
+            pass
+
+    class Jumpifeq(Instruction):
+        def execute(self, program):
+            pass
+
+    class Jumpifneq(Instruction):
+        def execute(self, program):
+            pass
+
     class Frame:
         def __init__(self,type):
             self.vars = {}
             self.type: TypeFrame = type
 
-        def add_var(self, var_name):
-            self.vars[var_name] = self.Var()
+        def add_var(self, var_name, type=None):
+            self.vars[var_name] = self.Var(type)
 
+        def get_var(self, var_name):
+            return self.vars[var_name]
+
+        def set_var(self, var_name, var):
+            self.vars[var_name] = var
+        
         def print(self):
             for var in self.vars:
                 print(var, self.vars[var])
@@ -245,27 +450,26 @@ class Program:
 
         class Var:
             def __init__(self, type=None, value=None):
-                self.type: str = type
-                self.value = value
+                self._type: str = type
+                self._value = value
 
             def get_type(self):
-                return self.type
+                return self._type
 
             def set_type(self, type):
-                self.type = type
+                self._type = type
 
             def get_frame(self):
-                return super().type
+                return super()._type
 
             def get_value(self):
-                return self.value
+                return self._value
 
             def set_value(self, value):
-                self.value = value
+                self._value = value
 
-            # for debugging
             def __str__(self):
-                return f"{self.type} {self.value}"
+                return f"{self._value}"
 
 class TypeFrame(Enum):
     GLOBAL = 0
@@ -317,255 +521,64 @@ def parse_sc_args():
             exit(11)
     return (xml_root, input)
 
-# maybe change this to gen_xml and create seperate check_xml func
-def check_xml(xml_root):
-    # check root element
-    if xml_root.tag != "program":
-        print("ERROR: Root element is not program", file=sys.stderr)
-        exit(32)
-    
-    if "language" not in xml_root.attrib or xml_root.attrib["language"] != "IPPcode23":
-        print("ERROR: Missing or invalid attribute", file=sys.stderr)
-        exit(32)
+# Checks if given variable already exists
+def check_var_exists(var_name, frame):
+    if var_name in frame.vars:
+        print("ERROR: Variable already declared", file=sys.stderr)
+        exit(52)
 
-    for instr in xml_root:
-        check_instr(instr)
-
-def check_instr(instr):
-    if instr.tag != "instruction":
-        print("ERROR: Element is not instruction", file=sys.stderr)
-        exit(32)
-    if "order" not in instr.attrib or re.match(r"^[0-9]+$", instr.attrib["order"]) is None:
-        print("ERROR: Missing or invalid attribute (order)", file=sys.stderr)
-        exit(32)
-
-    if "opcode" not in instr.attrib:
-        print("ERROR: Missing attribute (opcode)", file=sys.stderr)
-        exit(32)
-
-    match instr.attrib["opcode"]:
-        case "MOVE"|"NOT"|"INT2CHAR"|"STRLEN"|"TYPE":
-            check_var_symb(instr)
-        case "CREATEFRAME"|"PUSHFRAME"|"POPFRAME"|"RETURN"|"BREAK":
-            check_empty(instr)
-        case "DEFVAR"|"POPS":
-            check_var(instr)
-        case "CALL"|"LABEL"|"JUMP":
-            check_label(instr)
-        case "PUSHS"|"WRITE"|"EXIT"|"DPRINT":
-            check_symb(instr)
-        case "ADD"|"SUB"|"MUL"|"IDIV"|"LT"|"GT"|"EQ"|"AND"|"OR"|"STRI2INT"|"CONCAT"|"GETCHAR"|"SETCHAR":
-            check_var_2symb(instr)
-        case "READ":
-            check_var_type(instr)
-        case "JUMPIFEQ"|"JUMPIFNEQ":
-            check_label_2symb(instr)
-        case _:
-            print("ERROR: Invalid opcode", file=sys.stderr)
-            exit(32)
-
-def check_var_symb(instr):
-    # check number of arguments
-    if len(instr) != 2:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-    # check argument elements
-    for arg in instr:
-        if re.match(r"^(arg[12])$", arg.tag) is None: # not checking placements for each arg !!!
-            print("ERROR: Element is not argument", file=sys.stderr)
-            exit(32)
-    # Check first argument (var)
-    check_xml_attrib_type(instr[0], r"^(var)$")
-    check_var_re(instr[0].text)
-    # Check second argument (symb)
-    symb_type = check_xml_attrib_type(instr[1], r"^(var|int|string|bool|nil)$")
-    check_symb_re(instr[1].text, symb_type)
-
-def check_var_2symb(instr):
-    # check number of arguments
-    if len(instr) != 3:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-    
-    # check argument elements
-    for arg in instr:
-        if re.match(r"(^arg[123])$", arg.tag) is None:
-            print("ERROR: Element is not argument", file=sys.stderr)
-            exit(32)
-        
-    # Check first argument (var)
-    check_xml_attrib_type(instr[0], r"^(var)$")
-    check_var_re(instr[0].text)
-    # Check second argument (symb)
-    symb_type = check_xml_attrib_type(instr[1], r"^(var|int|string|bool|nil)$")
-    check_symb_re(instr[1].text, symb_type)
-    # Check third argument (symb)
-    symb_type = check_xml_attrib_type(instr[2], r"^(var|int|string|bool|nil)$")
-    check_symb_re(instr[2].text, symb_type)
-
-def check_var_type(instr):
-    # check number of arguments
-    if len(instr) != 2:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-
-    # check argument elements
-    for arg in instr:
-        if re.match(r"^(arg[12])$", arg.tag) is None:
-            print("ERROR: Element is not argument", file=sys.stderr)
-            exit(32)
-    
-    # Check first argument (var)
-    check_xml_attrib_type(instr[0], r"^(var)$")
-    check_var_re(instr[0].text)
-    # Check second argument (type)
-    check_xml_attrib_type(instr[1], r"^(type)$")
-    check_type_re(instr[1].text)
-
-def check_label_2symb(instr):
-    # check number of arguments
-    if len(instr) != 3:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-
-    # check argument elements
-    for arg in instr:
-        if re.match(r"^(arg[123])$", arg.tag) is None:
-            print("ERROR: Element is not argument", file=sys.stderr)
-            exit(32)
-    
-    # Check first argument (label)
-    check_xml_attrib_type(instr[0], r"^(label)$")
-    check_label_re(instr[0].text)
-    # Check second argument (symb)
-    symb_type = check_xml_attrib_type(instr[1], r"^(var|int|string|bool|nil)$")
-    check_symb_re(instr[1].text, symb_type)
-    # Check third argument (symb)
-    symb_type = check_xml_attrib_type(instr[2], r"^(var|int|string|bool|nil)$")
-    check_symb_re(instr[2].text, symb_type)
-
-
-def check_empty(instr):
-    # check number of arguments
-    if len(instr) != 0:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-
-def check_var(instr):
-    # check number of arguments
-    if len(instr) != 1:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-
-    # check argument elements
-    if re.match(r"^(arg1)$", instr[0].tag) is None:
-        print("ERROR: Element is not argument", file=sys.stderr)
-        exit(32)
-    # Check first argument (var)
-    check_xml_attrib_type(instr[0], r"^(var)$")
-    check_var_re(instr[0].text)
-
-def check_label(instr):
-    # check number of arguments
-    if len(instr) != 1:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-
-    # check argument elements
-    if re.match(r"^(arg1)$", instr[0].tag) is None:
-        print("ERROR: Element is not argument", file=sys.stderr)
-        exit(32)
-
-    # Check first argument (label)
-    check_xml_attrib_type(instr[0], r"^(label)$")
-    check_label_re(instr[0].text)
-
-def check_symb(instr):
-    # check number of arguments
-    if len(instr) != 1:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-
-    # check argument elements
-    if re.match(r"^(arg1)$", instr[0].tag) is None:
-        print("ERROR: Element is not argument", file=sys.stderr)
-        exit(32)
-
-    # Check first argument (symb)
-    symb_type = check_xml_attrib_type(instr[0], r"^(var|int|string|bool|nil)$")
-    check_symb_re(instr[0].text, symb_type)
-
-def check_type(instr):
-    # check number of arguments
-    if len(instr) != 1:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-
-    # check argument elements
-    if re.match(r"^arg1$", instr[0].tag) is None:
-        print("ERROR: Element is not argument", file=sys.stderr)
-        exit(32)
-
-    # Check first argument (type)
-    check_xml_attrib_type(instr[0], r"^(type)&")
-    check_type_re(instr[0].text)
-
-def check_var_re(var_value):
-    if re.match(r"^(GF|LF|TF)@([a-zA-Z]|_|-|\$|&|%|\*|!|\?)([a-zA-Z0-9]|_|-|\$|&|%|\*|!|\?)*$", var_value) is None:
-        print("ERROR: Invalid variable value", file=sys.stderr)
-        exit(32)
-
-def check_symb_re(symb_value, symb_type):
-    # if symb_value is None, we set it to empty string
-    symb_value = "" if symb_value is None else symb_value
-    match symb_type:
-        case "var":
-            if re.match(r"^(GF|LF|TF)@([a-zA-Z]|_|-|\$|&|%|\*|!|\?)([a-zA-Z0-9]|_|-|\$|&|%|\*|!|\?)*$", symb_value) is None:
-                print("ERROR: Invalid variable value", file=sys.stderr)
-                exit(32)
-        case "int":
-            if re.match(r"^[+-]?(0x|0X)?[0-9]+$", symb_value) is None:
-                print("ERROR: Invalid integer value", file=sys.stderr)
-                exit(32)
-        case "string":
-            if re.match(r"^(\\[0-9]{3}|[^\\#\s])*$", symb_value) is None:
-                print("ERROR: Invalid string value", file=sys.stderr)
-                exit(32)
-        case "bool":
-            if re.match(r"^(true|false)$", symb_value) is None:
-                print("ERROR: Invalid boolean value", file=sys.stderr)
-                exit(32)
-        case "nil":
-            if re.match(r"^nil$", symb_value) is None:
-                print("ERROR: Invalid nil value", file=sys.stderr)
-                exit(32)
-
-def check_label_re(label_value):
-    if re.match(r"^([a-zA-Z]|_|-|\$|&|%|\*|!|\?)([a-zA-Z0-9]|_|-|\$|&|%|\*|!|\?)*$", label_value) is None:
-        print("ERROR: Invalid label value", file=sys.stderr)
-        exit(32)
-
-def check_type_re(type_value):
-    if re.match(r"^(int|string|bool)$", type_value) is None:
-        print("ERROR: Invalid type value", file=sys.stderr)
-        exit(32)
-
-def check_xml_attrib_type(arg, regex):
-    if "type" not in arg.attrib or re.match(regex, arg.attrib["type"]) is None:
-        print("ERROR: Invalid or missing argument type", file=sys.stderr)
-        exit(32) 
-    return arg.attrib["type"]
-
+# Checks if variable is declared
 def check_var_declaration(instruction, frame, arg_index):
     if instruction.get_arg(arg_index).get_arg_name() not in frame.vars:
         print("ERROR: Variable not declared", file=sys.stderr)
         exit(54)
 
+# Checks if variable is defined
 def check_var_definition(instruction, frame, arg_index):
-    if frame.vars[instruction.get_arg(arg_index).get_arg_name()].get_type() is None:
+    if frame.vars[instruction.get_arg(arg_index).get_arg_name()].get_value() is None:
         print("ERROR: Variable not defined", file=sys.stderr)
         exit(56)
 
+# Function looks for variable in given frame, checks if it is declared and returns given frame
+def choose_frame_declare(instruction, program, arg_index):
+    if instruction.get_arg(arg_index).get_frame() == "GF":
+        check_var_declaration(instruction, program.gf(), arg_index)
+        return program.gf()
+    elif instruction.get_arg(arg_index).get_frame() == "LF":
+        if program.lf() is None:
+            print("ERROR: Local frame not initialized")
+            exit(55)
+        check_var_declaration(instruction, program.lf(), arg_index)
+        return program.lf()
+    if instruction.get_arg(arg_index).get_frame() == "TF":
+        if program.tf() is None:
+            print("ERROR: Temp frame not initialized")
+            exit(55)
+        check_var_declaration(instruction, program.tf(), arg_index)
+        return program.tf()
+
+# Function looks for variable in given frame, checks if it is declared and defined and returns given frame
+def choose_frame_both(instruction, program, arg_index):
+    if instruction.get_arg(arg_index).get_frame() == "GF":
+        check_var_declaration(instruction, program.gf(), arg_index)
+        check_var_definition(instruction, program.gf(), arg_index)
+        return program.gf()
+    elif instruction.get_arg(arg_index).get_frame() == "LF":
+        if program.lf() is None:
+            print("ERROR: Local frame not initialized")
+            exit(55)
+        check_var_declaration(instruction, program.lf(), arg_index)
+        check_var_definition(instruction, program.lf(), arg_index)
+        return program.lf()
+    if instruction.get_arg(arg_index).get_frame() == "TF":
+        if program.tf() is None:
+            print("ERROR: Temp frame not initialized")
+            exit(55)
+        check_var_declaration(instruction, program.tf(), arg_index)
+        check_var_definition(instruction, program.tf(), arg_index)
+        return program.tf()
+
+# Generates program structure from XML
 def gen_program(xml_root):
     program = Program()
     for instr in xml_root:
@@ -578,8 +591,8 @@ def gen_program(xml_root):
         program.add_instr(instr_obj)
     return program
 
+# Checks if order attributes are without duplicates
 def check_order_attribute(program):
-    # check duplicate order attributes
     dup_list = []
     for instr in program.instructions:
         if instr.order in dup_list:
@@ -587,27 +600,28 @@ def check_order_attribute(program):
             exit(32)
         dup_list.append(instr.order)
 
-
+# Sorts instructions by order attribute
 def sort_by_order(program):
     program.instructions.sort(key=lambda instr: int(instr.order))
     return program
 
+# Prints program
 def print_program():
     for instr in prg.instructions:
         print(instr.order+": ",instr.opcode)
         for arg in instr.args:
             print(arg.type, arg.value)
 
-# Maybe just do it simply like this and do the rest in instruction class
+# change this to normal for loop and loop through addresses of instructions
 def run_program(program):
     for instruction in program.instructions:
-        instruction.run(program)
+        instruction.execute(program)
 
-    program.print_frames()
+    #program.print_frames()
 
 if __name__ == "__main__":
     xml_root, input = parse_sc_args()
-    check_xml(xml_root)
+    check_xml.check_xml(xml_root)
     gen_program(xml_root)
     prg = gen_program(xml_root)
     check_order_attribute(prg)
