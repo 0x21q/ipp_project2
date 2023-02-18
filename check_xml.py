@@ -8,7 +8,7 @@ def check_xml(xml_root):
         exit(32)
     
     if "language" not in xml_root.attrib or xml_root.attrib["language"] != "IPPcode23":
-        print("ERROR: Missing or invalid attribute", file=sys.stderr)
+        print("ERROR: Missing or invalid attribute (language)", file=sys.stderr)
         exit(32)
 
     for instr in xml_root:
@@ -27,7 +27,7 @@ def check_instr(instr):
         print("ERROR: Missing attribute (opcode)", file=sys.stderr)
         exit(32)
 
-    match instr.attrib["opcode"]:
+    match instr.attrib["opcode"].upper():
         case "MOVE"|"NOT"|"INT2CHAR"|"STRLEN"|"TYPE":
             check_var_symb(instr)
         case "CREATEFRAME"|"PUSHFRAME"|"POPFRAME"|"RETURN"|"BREAK":
