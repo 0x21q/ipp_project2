@@ -261,15 +261,11 @@ class Program:
                 if frame.get_var(self.get_arg(1).get_arg_name()).get_type() == "bool":
                     value = frame.get_var(self.get_arg(1).get_arg_name()).get_value()
                 else:
-                    print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                    print("ERROR: Wrong type of variable", file=sys.stderr)
-                    exit(53)
+                    print_error(self, "Wrong type of variable", 53)
             elif self.get_arg(1).get_type() == "bool":
                 value = self.get_arg(1).get_arg_name()
             else:
-                print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                print("ERROR: Wrong type of variable", file=sys.stderr)
-                exit(53)
+                print_error(self, "Wrong type of variable", 53)
             # Checking variable and setting value, (*) Maybe need to check type of variable? !!!
             frame = choose_frame_declare(self, program, 0)
             frame.get_var(self.get_arg(0).get_arg_name()).set_type("bool")
@@ -284,24 +280,18 @@ class Program:
                 if frame.get_var(self.get_arg(1).get_arg_name()).get_type() == "int":
                     value = frame.get_var(self.get_arg(1).get_arg_name()).get_value()
                 else:
-                    print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                    print("ERROR: Wrong type of variable", file=sys.stderr)
-                    exit(53)
+                    print_error(self, "Wrong type of variable", 53)
             elif self.get_arg(1).get_type() == "int":
                 value = self.get_arg(1).get_arg_name()
             else:
-                print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                print("ERROR: Wrong type of variable", file=sys.stderr)
-                exit(53)
+                print_error(self, "Wrong type of variable", 53)
 
             frame = choose_frame_declare(self, program, 0)
             frame.get_var(self.get_arg(0).get_arg_name()).set_type("string")
             try:
                 frame.get_var(self.get_arg(0).get_arg_name()).set_value(chr(value))
             except ValueError:
-                print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                print("ERROR: Wrong value of variable", file=sys.stderr)
-                exit(58)
+                print_error(self, "Wrong value of variable", 58)
             program.set_pc(program.get_pc() + 1)
         
     class Strlen(Instruction):
@@ -311,15 +301,11 @@ class Program:
                 if frame.get_var(self.get_arg(1).get_arg_name()).get_type() == "string":
                     value = frame.get_var(self.get_arg(1).get_arg_name()).get_value()
                 else:
-                    print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                    print("ERROR: Wrong type of variable", file=sys.stderr)
-                    exit(53)
+                    print_error(self, "Wrong type of variable", 53)
             elif self.get_arg(1).get_type() == "string":
                 value = self.get_arg(1).get_arg_name()
             else:
-                print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                print("ERROR: Wrong type of variable", file=sys.stderr)
-                exit(53)
+                print_error(self, "Wrong type of variable", 53)
             frame = choose_frame_declare(self, program, 0)
             frame.get_var(self.get_arg(0).get_arg_name()).set_type("int")
             frame.get_var(self.get_arg(0).get_arg_name()).set_value(len(value))
@@ -348,9 +334,7 @@ class Program:
     class Pushframe(Instruction):
         def execute(self, program):
             if program.tf() is None:
-                print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                print("ERROR: Temp frame not initialized", file=sys.stderr)
-                exit(55)
+                print_error(self, "Temp frame not initialized", 55)
             program.push_stack(program.tf(), TypeStack.LOCAL)
             program.set_tf(None)
             program.set_pc(program.get_pc() + 1)
@@ -358,9 +342,7 @@ class Program:
     class Popframe(Instruction):
         def execute(self, program):
             if program.lf() is None:
-                print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                print("ERROR: Local frame not initialized", file=sys.stderr)
-                exit(55)
+                print_error(self, "Local frame not initialized", 55)
             program.set_tf(program.lf())
             program.pop_stack(TypeStack.LOCAL)
             program.set_pc(program.get_pc() + 1)
@@ -368,9 +350,7 @@ class Program:
     class Return(Instruction):
         def execute(self, program):
             if program.top_stack(TypeStack.CALL) is None:
-                print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                print("ERROR: Call stack is empty", file=sys.stderr)
-                exit(56)
+                print_error(self, "Call stack is empty", 56)
             program.set_pc(program.top_stack(TypeStack.CALL))
         
     class Break(Instruction):
@@ -386,16 +366,12 @@ class Program:
                 program.gf().add_var(self.get_arg(0).get_arg_name(), "var")
             elif self.get_arg(0).get_frame() == "LF":
                 if program.lf() is None:
-                    print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                    print("ERROR: Local frame not initialized", file=sys.stderr)
-                    exit(55)
+                    print_error(self, "Local frame not initialized", 55)
                 check_var_exists(self, program.lf())
                 program.lf().add_var(self.get_arg(0).get_arg_name(), "var")
             elif self.get_arg(0).get_frame() == "TF":
                 if program.tf() is None:
-                    print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                    print("ERROR: Temp frame not initialized", file=sys.stderr)
-                    exit(55)
+                    print_error(self, "Temp frame not initialized", 55)
                 check_var_exists(self, program.tf(), 0)
                 program.tf().add_var(self.get_arg(0).get_arg_name(), "var")
             program.set_pc(program.get_pc() + 1)
@@ -415,22 +391,16 @@ class Program:
             program.push_stack(self.get_address()+1, TypeStack.CALL)
             # Checking if argument is label and if it exists
             if self.get_arg(0).get_type() != "label":
-                print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                print("ERROR: Given argument isn't label", file=sys.stderr)
-                exit(52)
+                print_error(self, "Given argument isn't label", 52)
             if program.get_label_frame().get_var(self.get_arg(0).get_arg_name()) is None:
-                print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                print("ERROR: Label doesn't exist", file=sys.stderr)
-                exit(52)
+                print_error(self, "Label doesn't exist", 52)
             program.push_stack(program.get_pc()+1, TypeStack.CALL)
             program.set_pc(program.get_label_frame().get_var(self.get_arg(0).get_arg_name()).get_value())
     
     class Label(Instruction):
         def execute(self, program):
             if self.get_arg(0).get_type() != "label" or program.get_label_frame().get_var(self.get_arg(0).get_arg_name()) is not None:
-                print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                print("ERROR: Invalid label", file=sys.stderr)
-                exit(52)
+                print_error(self, "Invalid label", 52)
             program.get_label_frame().add_var(self.get_arg(0).get_arg_name(), "label")
             # Setting label value to the address of the next instruction
             program.get_label_frame().get_var(self.get_arg(0).get_arg_name()).set_value(self.get_address()+1)
@@ -439,13 +409,9 @@ class Program:
     class Jump(Instruction):
         def execute(self, program):
             if self.get_arg(0).get_type() != "label": # this check might be unnecessary
-                print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                print("ERROR: Given argument isn't label", file=sys.stderr)
-                exit(52)
+                print_error(self, "Given argument isn't label", 52)
             if program.get_label_frame().get_var(self.get_arg(0).get_arg_name()) is None:
-                print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                print("ERROR: Label doesn't exist", file=sys.stderr)
-                exit(52)
+                print_error(self, "Label doesn't exist", 52)
             program.set_pc(program.get_label_frame().get_var(self.get_arg(0).get_arg_name()).get_value())
         
     class Pushs(Instruction):
@@ -485,20 +451,14 @@ class Program:
                 frame = choose_frame_both(self, program, 0)
                 if frame.get_var(self.get_arg(0).get_arg_name()).get_type() == "int":
                     if int(frame.get_var(self.get_arg(0).get_arg_name()).get_value()) < 0 or int(frame.get_var(self.get_arg(0).get_arg_name()).get_value()) > 49:
-                        print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                        print("ERROR: Wrong exit code", file=sys.stderr)
-                        exit(57)
+                        print_error(self, "Wrong exit code", 57)
                     exit(int(frame.get_var(self.get_arg(0).get_arg_name()).get_value()))
                 exit(frame.get_var(self.get_arg(0).get_arg_name()).get_value())
             elif self.get_arg(0).get_type() == "int":
                 if int(self.get_arg(0).get_arg_name()) < 0 or int(self.get_arg(0).get_arg_name()) > 49:
-                    print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                    print("ERROR: Wrong exit code", file=sys.stderr)
-                    exit(57)
+                    print_error(self, "Wrong exit code", 57)
                 exit(int(self.get_arg(0).get_arg_name()))
-            print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-            print("ERROR: Wrong type of argument", file=sys.stderr)
-            exit(53)
+            print_error(self, "Wrong type of argument", 53)
 
     class Dprint(Instruction):
         def execute(self, program):
@@ -527,30 +487,22 @@ class Program:
             if self.get_arg(2).get_type() == "var":
                 frame = choose_frame_both(self, program, 2)
                 if frame.get_var(self.get_arg(2).get_arg_name()).get_type() != "int":
-                    print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                    print("ERROR: Wrong type of second argument", file=sys.stderr)
-                    exit(53)
+                    print_error(self, "Wrong type of second argument", 53)
                 value2 = int(frame.get_var(self.get_arg(2).get_arg_name()).get_value())
             elif self.get_arg(2).get_type() == "int":
                 value2 = int(self.get_arg(2).get_arg_name())
             else:
-                print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                print("ERROR: Wrong type of second argument", file=sys.stderr)
-                exit(53)
+                print_error(self, "Wrong type of second argument", 53)
 
             if self.get_arg(1).get_type() == "var":
                 frame = choose_frame_both(self, program, 1)
                 if frame.get_var(self.get_arg(1).get_arg_name()).get_type() != "int":
-                    print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                    print("ERROR: Wrong type of second argument", file=sys.stderr)
-                    exit(53)
+                    print_error(self, "Wrong type of first argument", 53)
                 value1 = int(frame.get_var(self.get_arg(1).get_arg_name()).get_value())
             elif self.get_arg(1).get_type() == "int":
                 value1 = int(self.get_arg(2).get_arg_name())
             else:
-                print("ERROR on line: " + str(self.get_address()+1), file=sys.stderr)
-                print("ERROR: Wrong type of second argument", file=sys.stderr)
-                exit(53)
+                print_error(self, "Wrong type of first argument", 53)
                 
             frame = choose_frame_declare(self, program, 0)
             frame.get_var(self.get_arg(0).get_arg_name()).set_type("int")
@@ -723,23 +675,17 @@ def parse_sc_args():
 # Checks if given variable already exists
 def check_var_exists(instruction, frame, arg_index):
     if instruction.get_arg(arg_index).get_arg_name() in frame.vars:
-        print("ERROR on line: " + str(instruction.get_address()+1), file=sys.stderr)
-        print("ERROR: Variable already declared", file=sys.stderr)
-        exit(52)
+        print_error(instruction, "Variable already declared", 52)
 
 # Checks if variable is declared
 def check_var_declaration(instruction, frame, arg_index):
     if instruction.get_arg(arg_index).get_arg_name() not in frame.vars:
-        print("ERROR on line: " + str(instruction.get_address()+1), file=sys.stderr)
-        print("ERROR: Variable not declared", file=sys.stderr)
-        exit(54)
+        print_error(instruction, "Variable not declared", 54)
 
 # Checks if variable is defined
 def check_var_definition(instruction, frame, arg_index):
     if frame.vars[instruction.get_arg(arg_index).get_arg_name()].get_value() is None:
-        print("ERROR on line: " + str(instruction.get_address()+1), file=sys.stderr)
-        print("ERROR: Variable not defined", file=sys.stderr)
-        exit(56)
+        print_error(instruction, "Variable not defined", 56)
 
 # Function looks for variable in given frame, checks if it is declared and returns given frame
 def choose_frame_declare(instruction, program, arg_index):
@@ -748,16 +694,12 @@ def choose_frame_declare(instruction, program, arg_index):
         return program.gf()
     elif instruction.get_arg(arg_index).get_frame() == "LF":
         if program.lf() is None:
-            print("ERROR on line: " + str(instruction.get_address()+1), file=sys.stderr)
-            print("ERROR: Local frame not initialized", file=sys.stderr)
-            exit(55)
+            print_error(instruction, "Local frame not initialized", 55)
         check_var_declaration(instruction, program.lf(), arg_index)
         return program.lf()
     if instruction.get_arg(arg_index).get_frame() == "TF":
         if program.tf() is None:
-            print("ERROR on line: " + str(instruction.get_address()+1), file=sys.stderr)
-            print("ERROR: Temp frame not initialized", file=sys.stderr)
-            exit(55)
+            print_error(instruction, "Temp frame not initialized", 55)
         check_var_declaration(instruction, program.tf(), arg_index)
         return program.tf()
 
@@ -769,20 +711,22 @@ def choose_frame_both(instruction, program, arg_index):
         return program.gf()
     elif instruction.get_arg(arg_index).get_frame() == "LF":
         if program.lf() is None:
-            print("ERROR on line: " + str(instruction.get_address()+1), file=sys.stderr)
-            print("ERROR: Local frame not initialized", file=sys.stderr)
-            exit(55)
+            print_error(instruction, "Local frame not initialized", 55)
         check_var_declaration(instruction, program.lf(), arg_index)
         check_var_definition(instruction, program.lf(), arg_index)
         return program.lf()
     if instruction.get_arg(arg_index).get_frame() == "TF":
         if program.tf() is None:
-            print("ERROR on line: " + str(instruction.get_address()+1), file=sys.stderr)
-            print("ERROR: Temp frame not initialized", file=sys.stderr)
-            exit(55)
+            print_error(instruction, "Temp frame not initialized", 55)
         check_var_declaration(instruction, program.tf(), arg_index)
         check_var_definition(instruction, program.tf(), arg_index)
         return program.tf()
+
+# Prints error message
+def print_error(instruction, error_msg, error_code):
+    print("ERROR on line: " + str(instruction.get_address()+1), file=sys.stderr)
+    print("ERROR: " + error_msg, file=sys.stderr)
+    exit(error_code)
 
 # Generates program structure from XML
 def gen_program(xml_root):
