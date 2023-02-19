@@ -50,15 +50,7 @@ def check_instr(instr):
 
 # Checks if XML arguments (var, symb) are valid
 def check_var_symb(instr):
-    # check number of arguments
-    if len(instr) != 2:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-    # check argument elements
-    for arg in instr:
-        if re.match(r"^(arg[12])$", arg.tag) is None: # not checking placements for each arg !!!
-            print("ERROR: Element is not argument", file=sys.stderr)
-            exit(32)
+    check_xml_arguments(instr, 2)
     # Check first argument (var)
     check_xml_attrib_type(instr[0], r"^(var)$")
     check_var_re(instr[0].text)
@@ -68,17 +60,7 @@ def check_var_symb(instr):
 
 # Checks if XML arguments (var, symb, symb) are valid
 def check_var_2symb(instr):
-    # check number of arguments
-    if len(instr) != 3:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-    
-    # check argument elements
-    for arg in instr:
-        if re.match(r"(^arg[123])$", arg.tag) is None:
-            print("ERROR: Element is not argument", file=sys.stderr)
-            exit(32)
-        
+    check_xml_arguments(instr, 3) 
     # Check first argument (var)
     check_xml_attrib_type(instr[0], r"^(var)$")
     check_var_re(instr[0].text)
@@ -91,17 +73,7 @@ def check_var_2symb(instr):
 
 # Checks if XML arguments (var, type) are valid
 def check_var_type(instr):
-    # check number of arguments
-    if len(instr) != 2:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-
-    # check argument elements
-    for arg in instr:
-        if re.match(r"^(arg[12])$", arg.tag) is None:
-            print("ERROR: Element is not argument", file=sys.stderr)
-            exit(32)
-    
+    check_xml_arguments(instr, 2) 
     # Check first argument (var)
     check_xml_attrib_type(instr[0], r"^(var)$")
     check_var_re(instr[0].text)
@@ -111,17 +83,7 @@ def check_var_type(instr):
 
 # Checks if XML arguments (label, symb, symb) are valid
 def check_label_2symb(instr):
-    # check number of arguments
-    if len(instr) != 3:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-
-    # check argument elements
-    for arg in instr:
-        if re.match(r"^(arg[123])$", arg.tag) is None:
-            print("ERROR: Element is not argument", file=sys.stderr)
-            exit(32)
-    
+    check_xml_arguments(instr, 3) 
     # Check first argument (label)
     check_xml_attrib_type(instr[0], r"^(label)$")
     check_label_re(instr[0].text)
@@ -141,63 +103,28 @@ def check_empty(instr):
 
 # Checks if XML argument (var) is valid
 def check_var(instr):
-    # check number of arguments
-    if len(instr) != 1:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-
-    # check argument elements
-    if re.match(r"^(arg1)$", instr[0].tag) is None:
-        print("ERROR: Element is not argument", file=sys.stderr)
-        exit(32)
+    check_xml_arguments(instr, 1)
     # Check first argument (var)
     check_xml_attrib_type(instr[0], r"^(var)$")
     check_var_re(instr[0].text)
 
 # Checks if XML argument (label) is valid
 def check_label(instr):
-    # check number of arguments
-    if len(instr) != 1:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-
-    # check argument elements
-    if re.match(r"^(arg1)$", instr[0].tag) is None:
-        print("ERROR: Element is not argument", file=sys.stderr)
-        exit(32)
-
+    check_xml_arguments(instr, 1)
     # Check first argument (label)
     check_xml_attrib_type(instr[0], r"^(label)$")
     check_label_re(instr[0].text)
 
 # Checks if XML argument (symb) is valid
 def check_symb(instr):
-    # check number of arguments
-    if len(instr) != 1:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-
-    # check argument elements
-    if re.match(r"^(arg1)$", instr[0].tag) is None:
-        print("ERROR: Element is not argument", file=sys.stderr)
-        exit(32)
-
+    check_xml_arguments(instr, 1)
     # Check first argument (symb)
     symb_type = check_xml_attrib_type(instr[0], r"^(var|int|string|bool|nil)$")
     check_symb_re(instr[0].text, symb_type)
 
 # Checks if XML argument (type) is valid
 def check_type(instr):
-    # check number of arguments
-    if len(instr) != 1:
-        print("ERROR: Invalid number of arguments", file=sys.stderr)
-        exit(32)
-
-    # check argument elements
-    if re.match(r"^arg1$", instr[0].tag) is None:
-        print("ERROR: Element is not argument", file=sys.stderr)
-        exit(32)
-
+    check_xml_arguments(instr, 1)
     # Check first argument (type)
     check_xml_attrib_type(instr[0], r"^(type)&")
     check_type_re(instr[0].text)
@@ -252,3 +179,16 @@ def check_xml_attrib_type(arg, regex):
         print("ERROR: Invalid or missing argument type", file=sys.stderr)
         exit(32) 
     return arg.attrib["type"]
+
+# Checks if XML arguments are valid
+def check_xml_arguments(instr, number_of_args):
+    # check number of arguments
+    if len(instr) != number_of_args:
+        print("ERROR: Invalid number of arguments", file=sys.stderr)
+        exit(32)
+
+    # check argument elements
+    for i in range(number_of_args):
+        if ("arg" + str(i+1)) != instr[i].tag:
+            print("ERROR: Element is not an argument or has invalid order", file=sys.stderr)
+            exit(32)
