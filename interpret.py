@@ -109,19 +109,19 @@ class Program:
 
     # for debugging
     def print_frames(self):
-        print("[GLOBAL FRAME]", file=sys.stderr)
+        print("\n[GLOBAL FRAME]", file=sys.stderr)
         self.gf().print()
-        print("[LOCAL FRAME]", file=sys.stderr)
+        print("\n[LOCAL FRAME]", file=sys.stderr)
         if self.lf() is not None:
             self.lf().print()
         else:
             print("-> not initialized", file=sys.stderr)
-        print("[TEMP FRAME]", file=sys.stderr)
+        print("\n[TEMP FRAME]", file=sys.stderr)
         if self.tf() is not None:
             self.tf().print()
         else:
             print("-> not initialized", file=sys.stderr)
-        print("[LABEL FRAME]", file=sys.stderr)
+        print("\n[LABEL FRAME]", file=sys.stderr)
         self.get_label_frame().print()
 
     # for debugging
@@ -209,7 +209,7 @@ class Program:
                     else:
                         self._value: bool = False
                 elif self._type == "nil":
-                    self._value: str = ""
+                    self._value: None = None
                 else:
                     self._value: str = value
 
@@ -221,7 +221,7 @@ class Program:
                 if self._type == "var":
                     return self._value[:2]
 
-            def get_arg_name(self):
+            def get_arg_val(self):
                 if self._type == "var":
                     return self._value[3:]
                 else:
@@ -235,96 +235,75 @@ class Program:
         def execute(self, program):
             temp_var = Program.Frame.Var()
             # Checking symbol
-            if self.get_arg(1).get_type() == "var":
-                frame = choose_frame_both(self, program, 1)
-                temp_var.set_value(frame.get_var(self.get_arg(1).get_arg_name()))
-            elif self.get_arg(1).get_type() == "int":
-                temp_var.set_value(int(self.get_arg(1).get_arg_name()))
-            elif self.get_arg(1).get_type() == "bool":
-                temp_var.set_value(bool(self.get_arg(1).get_arg_name()))
-            elif self.get_arg(1).get_type() == "string":
-                temp_var.set_value(str(self.get_arg(1).get_arg_name()))
-            elif self.get_arg(1).get_type() == "nil":
-                temp_var.set_value(None)
-                        
-            temp_var.set_type(self.get_arg(1).get_type())
+            arg = self.get_arg(1)
+            match arg.get_type():
+                case "var":
+                    frame = check_frame_both(self, program, 1)
+                    temp_var.set_value(frame.get_var(arg.get_arg_val()))
+                case "int":
+                    temp_var.set_value(int(arg.get_arg_val()))
+                case "bool":
+                    temp_var.set_value(bool(arg.get_arg_val()))
+                case "string":
+                    temp_var.set_value(str(arg.get_arg_val()))
+                case "nil":
+                    temp_var.set_value(None)
+            temp_var.set_type(arg.get_type())
             # Checking variable
-            frame = choose_frame_declare(self, program, 0)
-            frame.set_var(self.get_arg(0).get_arg_name(), temp_var)
+            frame = check_frame_declare(self, program, 0)
+            frame.set_var(self.get_arg(0).get_arg_val(), temp_var)
             program.set_pc(program.get_pc() + 1)
         
     class Not(Instruction):
         def execute(self, program):
             # Checking symbol
-            if self.get_arg(1).get_type() == "var":
-                frame = choose_frame_both(self, program, 1)
-                if frame.get_var(self.get_arg(1).get_arg_name()).get_type() == "bool":
-                    value = frame.get_var(self.get_arg(1).get_arg_name()).get_value()
-                else:
-                    print_error(self, "Wrong type of variable", 53)
-            elif self.get_arg(1).get_type() == "bool":
-                value = self.get_arg(1).get_arg_name()
-            else:
-                print_error(self, "Wrong type of variable", 53)
-            # Checking variable and setting value, (*) Maybe need to check type of variable? !!!
-            frame = choose_frame_declare(self, program, 0)
-            frame.get_var(self.get_arg(0).get_arg_name()).set_type("bool")
-            frame.get_var(self.get_arg(0).get_arg_name()).set_value(not value)
+            value = check_selected_type_arg(self, program, 1, "bool")
+            # Checking variable and setting value
+            frame = check_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_val()).set_type("bool")
+            frame.get_var(self.get_arg(0).get_arg_val()).set_value(not value)
             program.set_pc(program.get_pc() + 1)
         
     # Converts number to unicode character
     class Int2char(Instruction):
         def execute(self, program):
-            if self.get_arg(1).get_type() == "var":
-                frame = choose_frame_both(self, program, 1)
-                if frame.get_var(self.get_arg(1).get_arg_name()).get_type() == "int":
-                    value = frame.get_var(self.get_arg(1).get_arg_name()).get_value()
-                else:
-                    print_error(self, "Wrong type of variable", 53)
-            elif self.get_arg(1).get_type() == "int":
-                value = self.get_arg(1).get_arg_name()
-            else:
-                print_error(self, "Wrong type of variable", 53)
-
-            frame = choose_frame_declare(self, program, 0)
-            frame.get_var(self.get_arg(0).get_arg_name()).set_type("string")
+            # Checking symbol
+            value = check_selected_type_arg(self, program, 1, "int")
+            # Checking variable and setting value
+            frame = check_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_val()).set_type("string")
             try:
-                frame.get_var(self.get_arg(0).get_arg_name()).set_value(chr(value))
+                frame.get_var(self.get_arg(0).get_arg_val()).set_value(chr(value))
             except ValueError:
                 print_error(self, "Wrong value of variable", 58)
             program.set_pc(program.get_pc() + 1)
         
     class Strlen(Instruction):
         def execute(self, program):
-            if self.get_arg(1).get_type() == "var":
-                frame = choose_frame_both(self, program, 1)
-                if frame.get_var(self.get_arg(1).get_arg_name()).get_type() == "string":
-                    value = frame.get_var(self.get_arg(1).get_arg_name()).get_value()
-                else:
-                    print_error(self, "Wrong type of variable", 53)
-            elif self.get_arg(1).get_type() == "string":
-                value = self.get_arg(1).get_arg_name()
-            else:
-                print_error(self, "Wrong type of variable", 53)
-            frame = choose_frame_declare(self, program, 0)
-            frame.get_var(self.get_arg(0).get_arg_name()).set_type("int")
-            frame.get_var(self.get_arg(0).get_arg_name()).set_value(len(value))
+            # Checking symbol
+            value = check_selected_type_arg(self, program, 1, "string")
+            # Checking variable and setting value
+            frame = check_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_val()).set_type("int")
+            frame.get_var(self.get_arg(0).get_arg_val()).set_value(len(value))
             program.set_pc(program.get_pc() + 1)
         
     class Type(Instruction):
         def execute(self, program):
-            # Checking symbol and getting its type
-            type = ""
-            if self.get_arg(1).get_type() == "var":
-                frame = choose_frame_declare(self, program, 1)
-                if frame.vars[self.get_arg(1).get_arg_name()].get_value() is not None:
-                    type = frame.get_var(self.get_arg(1).get_arg_name()).get_type()
+            # Checking symbol
+            arg = self.get_arg(1)
+            if arg.get_type() == "var":
+                frame = check_frame_declare(self, program, 1)
+                if frame.vars[arg.get_arg_val()].get_value() is not None:
+                    type = frame.get_var(arg.get_arg_val()).get_type()
+                else:
+                    type = ""
             else:
-                type = self.get_arg(1).get_type()
-            # Checking variable
-            frame = choose_frame_declare(self, program, 0)
-            frame.get_var(self.get_arg(0).get_arg_name()).set_type("string")
-            frame.get_var(self.get_arg(0).get_arg_name()).set_value(str(type))
+                type = arg.get_type()
+            # Checking variable and setting value
+            frame = check_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_val()).set_type("string")
+            frame.get_var(self.get_arg(0).get_arg_val()).set_value(str(type))
             program.set_pc(program.get_pc() + 1)
 
     class Createframe(Instruction):
@@ -361,212 +340,314 @@ class Program:
 
     class Defvar(Instruction): 
         def execute(self, program):
-            if self.get_arg(0).get_frame() == "GF":
-                check_var_exists(self, program.gf(), 0)
-                program.gf().add_var(self.get_arg(0).get_arg_name(), "var")
-            elif self.get_arg(0).get_frame() == "LF":
-                if program.lf() is None:
-                    print_error(self, "Local frame not initialized", 55)
-                check_var_exists(self, program.lf())
-                program.lf().add_var(self.get_arg(0).get_arg_name(), "var")
-            elif self.get_arg(0).get_frame() == "TF":
-                if program.tf() is None:
-                    print_error(self, "Temp frame not initialized", 55)
-                check_var_exists(self, program.tf(), 0)
-                program.tf().add_var(self.get_arg(0).get_arg_name(), "var")
+            frame_dict = {"GF": program.gf, "LF": program.lf, "TF": program.tf}
+            frame_name = self.get_arg(0).get_frame()
+            if frame_name not in frame_dict:
+                print_error(self, "Invalid frame", 55)
+            frame = frame_dict.get(frame_name)()
+            if frame is None and frame_name != "GF":
+                print_error(self, f"{frame_name} not initialized", 55)
+            check_var_exists(self, frame, 0)
+            frame.add_var(self.get_arg(0).get_arg_val(), "var")
             program.set_pc(program.get_pc() + 1)
 
     class Pops(Instruction):
         def execute(self, program):
-            frame = choose_frame_declare(self, program, 0)
-            frame.get_var(self.get_arg(0).get_arg_name()).set_type(program.top_stack(TypeStack.DATA).get_type())
+            frame = check_frame_declare(self, program, 0)
+            var = frame.get_var(self.get_arg(0).get_arg_val())
+            var.set_type(program.top_stack(TypeStack.DATA).get_type())
             if program.top_stack(TypeStack.DATA).get_type() == "var":
-                frame.get_var(self.get_arg(0).get_arg_name()).set_value(program.pop_stack(TypeStack.DATA).get_value())
+                var.set_value(program.pop_stack(TypeStack.DATA).get_value())
             else:
-                frame.get_var(self.get_arg(0).get_arg_name()).set_value(program.pop_stack(TypeStack.DATA).get_arg_name())
+                var.set_value(program.pop_stack(TypeStack.DATA).get_arg_val())
             program.set_pc(program.get_pc() + 1)
         
     class Call(Instruction):
         def execute(self, program):
-            program.push_stack(self.get_address()+1, TypeStack.CALL)
+            arg = self.get_arg(0)
             # Checking if argument is label and if it exists
-            if self.get_arg(0).get_type() != "label":
-                print_error(self, "Given argument isn't label", 52)
-            if program.get_label_frame().get_var(self.get_arg(0).get_arg_name()) is None:
-                print_error(self, "Label doesn't exist", 52)
+            if arg.get_type() != "label" or program.get_label_frame().get_var(arg.get_arg_val()) is None:
+                print_error(self, "Invalid label", 52)
+            # Saving address of next instruction to call stack and setting pc to label value
             program.push_stack(program.get_pc()+1, TypeStack.CALL)
-            program.set_pc(program.get_label_frame().get_var(self.get_arg(0).get_arg_name()).get_value())
+            program.set_pc(program.get_label_frame().get_var(arg.get_arg_val()).get_value())
     
     class Label(Instruction):
         def execute(self, program):
-            if self.get_arg(0).get_type() != "label" or program.get_label_frame().get_var(self.get_arg(0).get_arg_name()) is not None:
+            arg = self.get_arg(0)
+            if arg.get_type() != "label" or program.get_label_frame().get_var(arg.get_arg_val()) is not None:
                 print_error(self, "Invalid label", 52)
-            program.get_label_frame().add_var(self.get_arg(0).get_arg_name(), "label")
+            program.get_label_frame().add_var(arg.get_arg_val(), "label")
             # Setting label value to the address of the next instruction
-            program.get_label_frame().get_var(self.get_arg(0).get_arg_name()).set_value(self.get_address()+1)
+            program.get_label_frame().get_var(arg.get_arg_val()).set_value(self.get_address()+1)
             program.set_pc(program.get_pc() + 1)
 
     class Jump(Instruction):
         def execute(self, program):
-            if self.get_arg(0).get_type() != "label": # this check might be unnecessary
-                print_error(self, "Given argument isn't label", 52)
-            if program.get_label_frame().get_var(self.get_arg(0).get_arg_name()) is None:
-                print_error(self, "Label doesn't exist", 52)
-            program.set_pc(program.get_label_frame().get_var(self.get_arg(0).get_arg_name()).get_value())
+            arg = self.get_arg(0)
+            if arg.get_type() != "label" or program.get_label_frame().get_var(arg.get_arg_val()) is None:
+                print_error(self, "Invalid label", 52)
+            program.set_pc(program.get_label_frame().get_var(arg.get_arg_val()).get_value())
         
     class Pushs(Instruction):
         def execute(self, program):
-            if self.get_arg(0).get_type() == "var":
-                frame = choose_frame_both(self, program, 0)
-                program.push_stack(frame.get_var(self.get_arg(0).get_arg_name()), TypeStack.DATA)
+            arg = self.get_arg(0)
+            if arg.get_type() == "var":
+                frame = check_frame_both(self, program, 0)
+                program.push_stack(frame.get_var(arg.get_arg_val()), TypeStack.DATA)
             else:
-                program.push_stack(self.get_arg(0), TypeStack.DATA)
+                program.push_stack(arg, TypeStack.DATA)
             program.set_pc(program.get_pc() + 1)
         
     class Write(Instruction):
         def execute(self, program):
-            if self.get_arg(0).get_type() == "var":
-                frame = choose_frame_both(self, program, 0)
-                if frame.get_var(self.get_arg(0).get_arg_name()).get_type() == "bool":
-                    if frame.get_var(self.get_arg(0).get_arg_name()).get_value():
-                        print("true", end='')
-                    else:
-                        print("false", end='')
+            arg = self.get_arg(0)
+            if arg.get_type() == "var":
+                frame = check_frame_both(self, program, 0)
+                var = frame.get_var(arg.get_arg_val())
+                if var.get_type() == "bool":
+                    print("true" if var.get_value() else "false", end='')
                 else:
-                    print(frame.get_var(self.get_arg(0).get_arg_name()).get_value(), end='')
-            elif self.get_arg(0).get_type() == "bool":
-                if self.get_arg(0).get_arg_name():
-                    print("true", end='')
-                else:
-                    print("false", end='')
-            elif self.get_arg(0).get_type() == "nil":
+                    print(var.get_value(), end='')
+            elif arg.get_type() == "bool":
+                print("true" if arg.get_arg_val() else "false", end='')
+            elif arg.get_type() == "nil":
                 print("", end='')
             else:
-                print(self.get_arg(0).get_arg_name(), end='')
+                print(arg.get_arg_val(), end='')
             program.set_pc(program.get_pc() + 1)
 
     class Exit(Instruction):
         def execute(self, program):
-            if self.get_arg(0).get_type() == "var":
-                frame = choose_frame_both(self, program, 0)
-                if frame.get_var(self.get_arg(0).get_arg_name()).get_type() == "int":
-                    if int(frame.get_var(self.get_arg(0).get_arg_name()).get_value()) < 0 or int(frame.get_var(self.get_arg(0).get_arg_name()).get_value()) > 49:
-                        print_error(self, "Wrong exit code", 57)
-                    exit(int(frame.get_var(self.get_arg(0).get_arg_name()).get_value()))
-                exit(frame.get_var(self.get_arg(0).get_arg_name()).get_value())
-            elif self.get_arg(0).get_type() == "int":
-                if int(self.get_arg(0).get_arg_name()) < 0 or int(self.get_arg(0).get_arg_name()) > 49:
-                    print_error(self, "Wrong exit code", 57)
-                exit(int(self.get_arg(0).get_arg_name()))
-            print_error(self, "Wrong type of argument", 53)
+            arg = self.get_arg(0)
+            if arg.get_type() == "var":
+                frame = check_frame_both(self, program, 0)
+                value = frame.get_var(arg.get_arg_val()).get_value()
+            elif arg.get_type() == "int":
+                value = arg.get_arg_val()
+            else:
+                print_error(self, "Wrong type of argument", 53)
+
+            if not 0 <= int(value) <= 49:
+                print_error(self, "Wrong exit code", 57)
+            exit(int(value))
 
     class Dprint(Instruction):
         def execute(self, program):
-            if self.get_arg(0).get_type() == "var":
-                frame = choose_frame_both(self, program, 0)
-                if frame.get_var(self.get_arg(0).get_arg_name()).get_type() == "bool":
-                    if frame.get_var(self.get_arg(0).get_arg_name()).get_value():
-                        print("true", file=sys.stderr, end='')
-                    else:
-                        print("false", file=sys.stderr, end='')
+            arg_type = self.get_arg(0).get_type()
+            if arg_type == "var":
+                frame = check_frame_both(self, program, 0)
+                var = frame.get_var(self.get_arg(0).get_arg_val())
+                if var.get_type() == "bool":
+                    print("true" if var.get_value() else "false", file=sys.stderr, end='')
                 else:
-                    print(frame.get_var(self.get_arg(0).get_arg_name()).get_value(), file=sys.stderr, end='')
-            elif self.get_arg(0).get_type() == "bool":
-                if self.get_arg(0).get_arg_name():
-                    print("true", file=sys.stderr, end='')
-                else:
-                    print("false", file=sys.stderr, end='')
-            elif self.get_arg(0).get_type() == "nil":
+                    print(var.get_value(), file=sys.stderr, end='')
+            elif arg_type == "bool":
+                print("true" if self.get_arg(0).get_arg_val() else "false", file=sys.stderr, end='')
+            elif arg_type == "nil":
                 print("", file=sys.stderr, end='')
             else:
-                print(self.get_arg(0).get_arg_name(), file=sys.stderr, end='')
+                print(self.get_arg(0).get_arg_val(), file=sys.stderr, end='')
             program.set_pc(program.get_pc() + 1)
 
     class Add(Instruction):
         def execute(self, program):
-            if self.get_arg(2).get_type() == "var":
-                frame = choose_frame_both(self, program, 2)
-                if frame.get_var(self.get_arg(2).get_arg_name()).get_type() != "int":
-                    print_error(self, "Wrong type of second argument", 53)
-                value2 = int(frame.get_var(self.get_arg(2).get_arg_name()).get_value())
-            elif self.get_arg(2).get_type() == "int":
-                value2 = int(self.get_arg(2).get_arg_name())
-            else:
-                print_error(self, "Wrong type of second argument", 53)
-
-            if self.get_arg(1).get_type() == "var":
-                frame = choose_frame_both(self, program, 1)
-                if frame.get_var(self.get_arg(1).get_arg_name()).get_type() != "int":
-                    print_error(self, "Wrong type of first argument", 53)
-                value1 = int(frame.get_var(self.get_arg(1).get_arg_name()).get_value())
-            elif self.get_arg(1).get_type() == "int":
-                value1 = int(self.get_arg(2).get_arg_name())
-            else:
-                print_error(self, "Wrong type of first argument", 53)
-                
-            frame = choose_frame_declare(self, program, 0)
-            frame.get_var(self.get_arg(0).get_arg_name()).set_type("int")
-            frame.get_var(self.get_arg(0).get_arg_name()).set_value(int(value1 + value2))
+            value2 = check_selected_type_arg(self, program, 2, "int")
+            value1 = check_selected_type_arg(self, program, 1, "int")
+            frame = check_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_val()).set_type("int")
+            frame.get_var(self.get_arg(0).get_arg_val()).set_value(int(value1 + value2))
+            program.set_pc(program.get_pc() + 1)
 
     class Sub(Instruction):
         def execute(self, program):
-            pass
+            value2 = check_selected_type_arg(self, program, 2, "int")
+            value1 = check_selected_type_arg(self, program, 1, "int")
+            frame = check_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_val()).set_type("int")
+            frame.get_var(self.get_arg(0).get_arg_val()).set_value(int(value1 - value2))
+            program.set_pc(program.get_pc() + 1)
 
     class Mul(Instruction):
         def execute(self, program):
-            pass
+            value2 = check_selected_type_arg(self, program, 2, "int")
+            value1 = check_selected_type_arg(self, program, 1, "int")
+            frame = check_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_val()).set_type("int")
+            frame.get_var(self.get_arg(0).get_arg_val()).set_value(int(value1 * value2))
+            program.set_pc(program.get_pc() + 1)
 
     class Idiv(Instruction):
         def execute(self, program):
-            pass
+            value2 = check_selected_type_arg(self, program, 2, "int")
+            if value2 == 0:
+                print_error(self, "Division by zero", 57)
+            value1 = check_selected_type_arg(self, program, 1, "int")
+            frame = check_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_val()).set_type("int")
+            frame.get_var(self.get_arg(0).get_arg_val()).set_value(int(value1 / value2))
+            program.set_pc(program.get_pc() + 1)
 
     class Lt(Instruction):
         def execute(self, program):
-            pass
+            if self.get_arg(1).get_type() == "nil" or self.get_arg(2).get_type() == "nil":
+                print_error(self, "Wrong type of argument, argument can't be nil", 53)
+            arg1_val = get_val(self, program, 1) 
+            arg2_val = get_val(self, program, 2)
+            if type(arg1_val) != type(arg2_val):
+                print_error(self, "Arguments are not the same type", 53)
+            frame = check_frame_declare(self, program, 0)
+            result_var = frame.get_var(self.get_arg(0).get_arg_val())
+            result_var.set_type("bool")
+            result_var.set_value(arg1_val < arg2_val)
+            program.set_pc(program.get_pc() + 1)
 
     class Gt(Instruction):
         def execute(self, program):
-            pass
+            if self.get_arg(1).get_type() == "nil" or self.get_arg(2).get_type() == "nil":
+                print_error(self, "Wrong type of argument, argument can't be nil", 53)
+            arg1_val = get_val(self, program, 1) 
+            arg2_val = get_val(self, program, 2)
+            if type(arg1_val) != type(arg2_val):
+                print_error(self, "Arguments are not the same type", 53)
+            frame = check_frame_declare(self, program, 0)
+            result_var = frame.get_var(self.get_arg(0).get_arg_val())
+            result_var.set_type("bool")
+            result_var.set_value(arg1_val > arg2_val)
+            program.set_pc(program.get_pc() + 1)
 
     class Eq(Instruction):
         def execute(self, program):
-            pass
+            arg1_val = get_val(self, program, 1) 
+            arg2_val = get_val(self, program, 2)
+            if self.get_arg(1).get_type() == "nil" or self.get_arg(2).get_type() == "nil":
+                pass
+            elif type(arg1_val) != type(arg2_val):
+                print_error(self, "Arguements are not the same type and neither is nil", 53)
+            frame = check_frame_declare(self, program, 0)
+            result_var = frame.get_var(self.get_arg(0).get_arg_val())
+            result_var.set_type("bool")
+            result_var.set_value(arg1_val == arg2_val)
+            program.set_pc(program.get_pc() + 1)
 
     class And(Instruction):
         def execute(self, program):
-            pass
+            value2 = check_selected_type_arg(self, program, 2, "bool")
+            value1 = check_selected_type_arg(self, program, 1, "bool")
+            frame = check_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_val()).set_type("bool")
+            frame.get_var(self.get_arg(0).get_arg_val()).set_value(value1 and value2)
+            program.set_pc(program.get_pc() + 1)
 
     class Or(Instruction):
         def execute(self, program):
-            pass
+            value2 = check_selected_type_arg(self, program, 2, "bool")
+            value1 = check_selected_type_arg(self, program, 1, "bool")
+            frame = check_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_val()).set_type("bool")
+            frame.get_var(self.get_arg(0).get_arg_val()).set_value(value1 or value2)
+            program.set_pc(program.get_pc() + 1)
 
     class Str2int(Instruction):
         def execute(self, program):
-            pass
-
+            index = check_selected_type_arg(self, program, 2, "int")
+            value = check_selected_type_arg(self, program, 1, "string")
+            frame = check_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_val()).set_type("int")
+            try:
+                frame.get_var(self.get_arg(0).get_arg_val()).set_value(ord(value[index]))
+            except IndexError:
+                print_error(self, "Index out of range", 58)
+            except ValueError:
+                print_error(self, "Invalid value of argument", 58)
+            program.set_pc(program.get_pc() + 1)
+            
     class Concat(Instruction):
         def execute(self, program):
-            pass
+            value2 = check_selected_type_arg(self, program, 2, "string")
+            value1 = check_selected_type_arg(self, program, 1, "string")
+            frame = check_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_val()).set_type("string")
+            frame.get_var(self.get_arg(0).get_arg_val()).set_value(value1 + value2)
+            program.set_pc(program.get_pc() + 1)
 
     class Getchar(Instruction):
         def execute(self, program):
-            pass
+            index = check_selected_type_arg(self, program, 2, "int")
+            value = check_selected_type_arg(self, program, 1, "string")
+            frame = check_frame_declare(self, program, 0)
+            frame.get_var(self.get_arg(0).get_arg_val()).set_type("string")
+            try:
+                frame.get_var(self.get_arg(0).get_arg_val()).set_value(value[index])
+            except IndexError:
+                print_error(self, "Index out of range", 58)
+            program.set_pc(program.get_pc() + 1)
 
     class Setchar(Instruction):
         def execute(self, program):
-            pass
+            char = check_selected_type_arg(self, program, 2, "string")
+            index = check_selected_type_arg(self, program, 1, "int")
+            frame = check_frame_both(self, program, 0)
+            if frame.get_var(self.get_arg(0).get_arg_val()).get_type() != "string":
+                print_error(self, "Wrong type of argument, argument is not a string", 53)
+            try:
+                frame.get_var(self.get_arg(0).get_arg_val()).set_char(char, index)
+            except IndexError:
+                print_error(self, "Index out of range", 58)
+            program.set_pc(program.get_pc() + 1)
 
     class Read(Instruction):
         def execute(self, program):
-            pass
+            value = check_selected_type_arg(self, program, 1, "type")
+            frame = check_frame_declare(self, program, 0)
+            var = frame.get_var(self.get_arg(0).get_arg_val())
+            try:
+                if value == "int":
+                    var.set_type("int")
+                    var.set_value(int(input))
+                elif value == "bool":
+                    var.set_type("bool")
+                    var.set_value(True) if input == "true" else var.set_value(False)
+                elif value == "string":
+                    var.set_type("string")
+                    var.set_value(input)
+            except ValueError:
+                print_error(self, "Invalid type of input value", 58)
+            program.set_pc(program.get_pc() + 1)
 
     class Jumpifeq(Instruction):
         def execute(self, program):
-            pass
+            arg1_val = get_val(self, program, 1) 
+            arg2_val = get_val(self, program, 2)
+            if self.get_arg(1).get_type() == "nil" or self.get_arg(2).get_type() == "nil":
+                pass
+            elif type(arg1_val) != type(arg2_val):
+                print_error(self, "Arguments are not the same type", 53)
+
+            arg = self.get_arg(0)
+            if arg.get_type() != "label" or program.get_label_frame().get_var(arg.get_arg_val()) is None:
+                print_error(self, "Invalid label", 52)
+            if arg1_val == arg2_val:
+                program.set_pc(program.get_label_frame().get_var(arg.get_arg_val()).get_value())
+            else:
+                program.set_pc(program.get_pc() + 1)
 
     class Jumpifneq(Instruction):
         def execute(self, program):
-            pass
+            arg1_val = get_val(self, program, 1) 
+            arg2_val = get_val(self, program, 2)
+            if self.get_arg(1).get_type() == "nil" or self.get_arg(2).get_type() == "nil":
+                pass
+            elif type(arg1_val) != type(arg2_val):
+                print_error(self, "Arguemnts are not the same type and neither is nil", 53)
+
+            arg = self.get_arg(0)
+            if arg.get_type() != "label" or program.get_label_frame().get_var(arg.get_arg_val()) is None:
+                print_error(self, "Invalid label", 52)
+            if arg1_val != arg2_val:
+                program.set_pc(program.get_label_frame().get_var(arg.get_arg_val()).get_value())
+            else:
+                program.set_pc(program.get_pc() + 1)
 
     class Frame:
         def __init__(self,type):
@@ -611,6 +692,10 @@ class Program:
 
             def set_value(self, value):
                 self._value = value
+
+            def set_char(self, char, index):
+                char = char[0] if len(char) > 0 else ""
+                self._value = self._value[:index] + char + self._value[index+1:]
 
             def __str__(self):
                 return f"{self._value}"
@@ -674,21 +759,21 @@ def parse_sc_args():
 
 # Checks if given variable already exists
 def check_var_exists(instruction, frame, arg_index):
-    if instruction.get_arg(arg_index).get_arg_name() in frame.vars:
+    if instruction.get_arg(arg_index).get_arg_val() in frame.vars:
         print_error(instruction, "Variable already declared", 52)
 
 # Checks if variable is declared
 def check_var_declaration(instruction, frame, arg_index):
-    if instruction.get_arg(arg_index).get_arg_name() not in frame.vars:
+    if instruction.get_arg(arg_index).get_arg_val() not in frame.vars:
         print_error(instruction, "Variable not declared", 54)
 
 # Checks if variable is defined
 def check_var_definition(instruction, frame, arg_index):
-    if frame.vars[instruction.get_arg(arg_index).get_arg_name()].get_value() is None:
+    if frame.vars[instruction.get_arg(arg_index).get_arg_val()].get_value() is None:
         print_error(instruction, "Variable not defined", 56)
 
 # Function looks for variable in given frame, checks if it is declared and returns given frame
-def choose_frame_declare(instruction, program, arg_index):
+def check_frame_declare(instruction, program, arg_index):
     if instruction.get_arg(arg_index).get_frame() == "GF":
         check_var_declaration(instruction, program.gf(), arg_index)
         return program.gf()
@@ -704,7 +789,7 @@ def choose_frame_declare(instruction, program, arg_index):
         return program.tf()
 
 # Function looks for variable in given frame, checks if it is declared and defined and returns given frame
-def choose_frame_both(instruction, program, arg_index):
+def check_frame_both(instruction, program, arg_index):
     if instruction.get_arg(arg_index).get_frame() == "GF":
         check_var_declaration(instruction, program.gf(), arg_index)
         check_var_definition(instruction, program.gf(), arg_index)
@@ -727,6 +812,25 @@ def print_error(instruction, error_msg, error_code):
     print("ERROR on line: " + str(instruction.get_address()+1), file=sys.stderr)
     print("ERROR: " + error_msg, file=sys.stderr)
     exit(error_code)
+
+# Function checks if argument for selected type is correct and return its value
+def check_selected_type_arg(self, program, arg_index, type):
+    if self.get_arg(arg_index).get_type() == "var":
+        frame = check_frame_both(self, program, arg_index)
+        if frame.get_var(self.get_arg(arg_index).get_arg_val()).get_type() != type:
+            print_error(self, "Wrong type of argument", 53)
+        return frame.get_var(self.get_arg(arg_index).get_arg_val()).get_value()
+    elif self.get_arg(arg_index).get_type() != type:
+        print_error(self, "Wrong type of argument", 53)
+    return self.get_arg(arg_index).get_arg_val()
+
+# Function checks if argument is variable or symbol and returns its value
+def get_val(instr, program, arg_index):
+    arg = instr.get_arg(arg_index)
+    if arg.get_type() == "var":
+        frame = check_frame_both(instr, program, arg_index)
+        return frame.get_var(arg.get_arg_val()).get_value()
+    return arg.get_arg_val()
 
 # Generates program structure from XML
 def gen_program(xml_root):
@@ -759,11 +863,11 @@ def sort_by_order(program):
     return program
 
 # Prints program
-def print_program():
-    for instr in prg.instructions:
-        print(str(instr.get_address()) +": ",instr.get_opcode())
-        for arg in instr.args:
-            print(arg.get_type(), arg.get_arg_name())
+#def print_program():
+    #for instr in prg.instructions:
+        #print(str(instr.get_address()) +": ",instr.get_opcode())
+        #for arg in instr.args:
+            #print(arg.get_type(), arg.get_arg_val())
 
 if __name__ == "__main__":
     xml_root, input = parse_sc_args()
@@ -772,6 +876,5 @@ if __name__ == "__main__":
     prg = gen_program(xml_root)
     check_order_attribute(prg)
     prg = sort_by_order(prg)
-    #print_program()
     prg.run()
     exit(0)
