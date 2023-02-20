@@ -104,8 +104,7 @@ class Program:
     def run(self):
         self.set_pc(0)
         while self.get_pc() < len(self.instructions):
-            self.instructions[self.get_pc()].execute(self) # maybe not index by list index but by address
-        #program.print_frames()
+            self.instructions[self.get_pc()].execute(self)
 
     # for debugging
     def print_frames(self):
@@ -264,7 +263,6 @@ class Program:
             frame.get_var(self.get_arg(0).get_arg_val()).set_value(not value)
             program.set_pc(program.get_pc() + 1)
         
-    # Converts number to unicode character
     class Int2char(Instruction):
         def execute(self, program):
             # Checking symbol
@@ -374,12 +372,11 @@ class Program:
     
     class Label(Instruction):
         def execute(self, program):
-            arg = self.get_arg(0)
-            if arg.get_type() != "label" or program.get_label_frame().get_var(arg.get_arg_val()) is not None:
-                print_error(self, "Invalid label", 52)
-            program.get_label_frame().add_var(arg.get_arg_val(), "label")
-            # Setting label value to the address of the next instruction
-            program.get_label_frame().get_var(arg.get_arg_val()).set_value(self.get_address()+1)
+            #arg = self.get_arg(0)
+            #if arg.get_type() != "label" or program.get_label_frame().get_var(arg.get_arg_val()) is not None:
+            #    print_error(self, "Invalid label", 52)
+            #program.get_label_frame().add_var(arg.get_arg_val(), "label")
+            #program.get_label_frame().get_var(arg.get_arg_val()).set_value(self.get_address()+1)
             program.set_pc(program.get_pc() + 1)
 
     class Jump(Instruction):
@@ -617,34 +614,34 @@ class Program:
 
     class Jumpifeq(Instruction):
         def execute(self, program):
-            arg1_val = get_val(self, program, 1) 
-            arg2_val = get_val(self, program, 2)
+            value2 = get_val(self, program, 2)
+            value1 = get_val(self, program, 1) 
             if self.get_arg(1).get_type() == "nil" or self.get_arg(2).get_type() == "nil":
                 pass
-            elif type(arg1_val) != type(arg2_val):
+            elif type(value1) != type(value2):
                 print_error(self, "Arguments are not the same type", 53)
 
             arg = self.get_arg(0)
             if arg.get_type() != "label" or program.get_label_frame().get_var(arg.get_arg_val()) is None:
                 print_error(self, "Invalid label", 52)
-            if arg1_val == arg2_val:
+            if value1 == value2:
                 program.set_pc(program.get_label_frame().get_var(arg.get_arg_val()).get_value())
             else:
                 program.set_pc(program.get_pc() + 1)
 
     class Jumpifneq(Instruction):
         def execute(self, program):
-            arg1_val = get_val(self, program, 1) 
-            arg2_val = get_val(self, program, 2)
+            value2 = get_val(self, program, 2)
+            value1 = get_val(self, program, 1)
             if self.get_arg(1).get_type() == "nil" or self.get_arg(2).get_type() == "nil":
                 pass
-            elif type(arg1_val) != type(arg2_val):
+            elif type(value1) != type(value2):
                 print_error(self, "Arguemnts are not the same type and neither is nil", 53)
 
             arg = self.get_arg(0)
             if arg.get_type() != "label" or program.get_label_frame().get_var(arg.get_arg_val()) is None:
                 print_error(self, "Invalid label", 52)
-            if arg1_val != arg2_val:
+            if value1 != value2:
                 program.set_pc(program.get_label_frame().get_var(arg.get_arg_val()).get_value())
             else:
                 program.set_pc(program.get_pc() + 1)
@@ -832,7 +829,7 @@ def get_val(instr, program, arg_index):
         return frame.get_var(arg.get_arg_val()).get_value()
     return arg.get_arg_val()
 
-# Generates program structure from XML
+# Generates program structure from XML to objects (classes)
 def gen_program(xml_root):
     program = Program()
     address = 0
@@ -844,8 +841,18 @@ def gen_program(xml_root):
             arg_obj = Program.Instruction.Argument(arg.attrib["type"], arg.text)
             instr_obj.add_arg(arg_obj)
         program.add_instr(instr_obj)
+        # Generates labels
+        if instr_obj.get_opcode() == "LABEL":
+            gen_label(instr_obj, program)
         address += 1
     return program
+
+def gen_label(instr, program):
+    arg = instr.get_arg(0)
+    if arg.get_type() != "label" or program.get_label_frame().get_var(arg.get_arg_val()) is not None:
+        print_error(instr, "Invalid label", 52)
+    program.get_label_frame().add_var(arg.get_arg_val(), "label")
+    program.get_label_frame().get_var(arg.get_arg_val()).set_value(instr.get_address()+1)
 
 # Checks if order attributes are without duplicates
 def check_order_attribute(program):

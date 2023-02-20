@@ -187,8 +187,16 @@ def check_xml_arguments(instr, number_of_args):
         print("ERROR: Invalid number of arguments", file=sys.stderr)
         exit(32)
 
-    # check argument elements
-    for i in range(number_of_args):
-        if ("arg" + str(i+1)) != instr[i].tag:
-            print("ERROR: Element is not an argument or has invalid order", file=sys.stderr)
+    # check argument elements, doesn't check duplicate arguments
+    if number_of_args == 1:
+        if instr.find("arg1") is None:
+            print("ERROR: Instruction is missing an argument", file=sys.stderr)
+            exit(32)
+    elif number_of_args == 2:
+        if instr.find("arg1") is None or instr.find("arg2") is None:
+            print("ERROR: Instruction is missing an argument", file=sys.stderr)
+            exit(32)
+    else:
+        if instr.find("arg1") is None or instr.find("arg2") is None or instr.find("arg3") is None:
+            print("ERROR: Instruction is missing an argument", file=sys.stderr)
             exit(32)
