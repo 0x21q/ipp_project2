@@ -6,6 +6,9 @@ from enum import Enum
 
 import check_xml
 
+# TODO
+# - add parsing of escaped unicode chars in strings (\xyz) 
+
 # Stack implementation using deque
 class Stack:
     def __init__(self):
@@ -405,13 +408,13 @@ class Program:
                 if var.get_type() == "bool":
                     print("true" if var.get_value() else "false", end='')
                 else:
-                    print(var.get_value(), end='')
+                    print(replace_escaped_chars(var.get_value()), end='')
             elif arg.get_type() == "bool":
                 print("true" if arg.get_arg_val() else "false", end='')
             elif arg.get_type() == "nil":
                 print("", end='')
             else:
-                print(arg.get_arg_val(), end='')
+                print(replace_escaped_chars(arg.get_arg_val()), end='')
             program.set_pc(program.get_pc() + 1)
 
     class Exit(Instruction):
@@ -828,6 +831,19 @@ def get_val(instr, program, arg_index):
         frame = check_frame_both(instr, program, arg_index)
         return frame.get_var(arg.get_arg_val()).get_value()
     return arg.get_arg_val()
+
+def replace_escaped_chars(string):
+    idx = string.find("\\")
+    if idx == -1:
+        return string
+    while(idx != -1):
+        try:
+            string = string[:idx] + chr(int(string[idx+1:idx+4])) + string[idx+4:]
+            idx = string.find("\\")
+        except ValueError:
+            print("ERROR: Invalid escape sequence", file=sys.stderr)
+            exit(58)
+    return string
 
 # Generates program structure from XML to objects (classes)
 def gen_program(xml_root):
