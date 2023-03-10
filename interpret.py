@@ -199,17 +199,9 @@ class Program:
             def __init__(self, type=None, value=None):
                 self._type: str = type
                 if self._type == "int":
-                    if re.match(r"^[-+]?[1-9][0-9]*$", value):
-                       self._value: int = int(value) 
-                    elif re.match(r"^[+-]?(0x|0X)?[0-9]+$", value):
-                        self._value: int = int(value, 16)
-                    elif re.match(r"^[+-]?0[0-7]+$", value):
-                        self._value: int = int(value, 8)
+                    self._value: int = set_int(value)
                 elif self._type == "bool":
-                    if value == "true":
-                        self._value: bool = True
-                    else:
-                        self._value: bool = False
+                    self._value = True if value == "true" else False
                 elif self._type == "nil":
                     self._value: None = None
                 else:
@@ -845,6 +837,21 @@ def replace_escaped_chars(string):
             exit(58)
     return string
 
+def set_int(value):
+    if re.match(r"^[+-]?0$", value):
+        return int(value, 10)
+    if re.match(r"^[+-]?(0x|0X)[\da-fA-F]+(_[\da-fA-F]+)*$", value):
+        return int(value, 16)
+    elif 'o' in value or 'O' in value:
+        if re.match(r"^[+-]?0(o|O)?[0-7]+(_[0-7]+)*$", value):
+            return int(value, 8)
+    elif re.match(r"^[+-]?0+[0-7]*(_[0-7]+)*$", value):
+        # we remove leading zeros
+        value = re.sub(r"^0+", "", value)
+        return int(value, 8)
+    elif re.match(r"^[+-]?[1-9][\d]*(_[\d]+)*$", value):
+        return int(value, 10)
+    
 # Generates program structure from XML to objects (classes)
 def gen_program(xml_root):
     program = Program()
@@ -852,8 +859,7 @@ def gen_program(xml_root):
     for instr in xml_root:
         instr_obj = Program.Instruction(address, instr.attrib["opcode"].upper(), instr.attrib["order"])
         for arg in instr:
-            if arg.text is None: 
-                arg.text = ""
+            arg.text = "" if arg.text is None else arg.text
             arg_obj = Program.Instruction.Argument(arg.attrib["type"], arg.text)
             instr_obj.add_arg(arg_obj)
         program.add_instr(instr_obj)

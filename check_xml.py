@@ -145,7 +145,17 @@ def check_symb_re(symb_value, symb_type):
                 print("ERROR: Invalid variable value", file=sys.stderr)
                 exit(32)
         case "int":
-            if re.match(r"^[+-]?(0x|0X)?[0-9]+$", symb_value) is None:
+            valid_int = False
+            if re.match(r"^[+-]?(0x|0X)[\da-fA-F]+(_[\da-fA-F]+)*$", symb_value) is None:
+                valid_int = True
+            elif 'o' in symb_value or 'O' in symb_value:
+                if re.match(r"^[+-]?0(o|O)?[0-7]+(_[0-7]+)*$", symb_value) is None:
+                    valid_int = True
+            elif re.match(r"^[+-]?0+[0-7]*(_[0-7]+)*$", symb_value) is None:
+                valid_int = True
+            elif re.match(r"^[+-]?[1-9][\d]*(_[\d]+)*$", symb_value) is None:
+                valid_int = True
+            if not valid_int:
                 print("ERROR: Invalid integer value", file=sys.stderr)
                 exit(32)
         case "string":
