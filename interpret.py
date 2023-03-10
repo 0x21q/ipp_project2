@@ -399,14 +399,18 @@ class Program:
                 var = frame.get_var(arg.get_arg_val())
                 if var.get_type() == "bool":
                     print("true" if var.get_value() else "false", end='')
-                else:
+                elif var.get_type() == "string":
                     print(replace_escaped_chars(var.get_value()), end='')
+                else:
+                    print(var.get_value(), end='')
             elif arg.get_type() == "bool":
                 print("true" if arg.get_arg_val() else "false", end='')
             elif arg.get_type() == "nil":
                 print("", end='')
-            else:
+            elif arg.get_type() == "string":
                 print(replace_escaped_chars(arg.get_arg_val()), end='')
+            else:
+                print(arg.get_arg_val(), end='')
             program.set_pc(program.get_pc() + 1)
 
     class Exit(Instruction):
@@ -859,7 +863,7 @@ def gen_program(xml_root):
     for instr in xml_root:
         instr_obj = Program.Instruction(address, instr.attrib["opcode"].upper(), instr.attrib["order"])
         for arg in instr:
-            arg.text = "" if arg.text is None else arg.text
+            arg.text = "" if arg.text is None else arg.text.strip()
             arg_obj = Program.Instruction.Argument(arg.attrib["type"], arg.text)
             instr_obj.add_arg(arg_obj)
         program.add_instr(instr_obj)

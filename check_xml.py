@@ -131,6 +131,7 @@ def check_type(instr):
 
 # Checks var name with regex
 def check_var_re(var_value):
+    var_value = var_value.strip()
     if re.match(r"^(GF|LF|TF)@([a-zA-Z]|_|-|\$|&|%|\*|!|\?)([a-zA-Z0-9]|_|-|\$|&|%|\*|!|\?)*$", var_value) is None:
         print("ERROR: Invalid variable value", file=sys.stderr)
         exit(32)
@@ -138,7 +139,7 @@ def check_var_re(var_value):
 # Checks symb name with regex
 def check_symb_re(symb_value, symb_type):
     # if symb_value is None, we set it to empty string
-    symb_value = "" if symb_value is None else symb_value
+    symb_value = "" if symb_value is None else symb_value.strip()
     match symb_type:
         case "var":
             if re.match(r"^(GF|LF|TF)@([a-zA-Z]|_|-|\$|&|%|\*|!|\?)([a-zA-Z0-9]|_|-|\$|&|%|\*|!|\?)*$", symb_value) is None:
@@ -173,12 +174,14 @@ def check_symb_re(symb_value, symb_type):
 
 # Checks label name with regex
 def check_label_re(label_value):
+    label_value = label_value.strip()
     if re.match(r"^([a-zA-Z]|_|-|\$|&|%|\*|!|\?)([a-zA-Z0-9]|_|-|\$|&|%|\*|!|\?)*$", label_value) is None:
         print("ERROR: Invalid label value", file=sys.stderr)
         exit(32)
 
 # Checks type name with regex
 def check_type_re(type_value):
+    type_value = type_value.strip()
     if re.match(r"^(int|string|bool)$", type_value) is None:
         print("ERROR: Invalid type value", file=sys.stderr)
         exit(32)
