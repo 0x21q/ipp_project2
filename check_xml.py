@@ -1,6 +1,7 @@
 import sys, re
 
 # Checks if XML is valid
+# @param xml_root XML root element
 def check_xml(xml_root):
     # check root element
     if xml_root.tag != "program":
@@ -15,6 +16,7 @@ def check_xml(xml_root):
         check_instr(instr)
 
 # Checks if XML instruction is valid
+# @param instr XML instruction element
 def check_instr(instr):
     if instr.tag != "instruction":
         print("ERROR: Element is not instruction", file=sys.stderr)
@@ -49,6 +51,7 @@ def check_instr(instr):
             exit(32)
 
 # Checks if XML arguments (var, symb) are valid
+# @param instr XML instruction element
 def check_var_symb(instr):
     check_xml_arguments(instr, 2)
     # Check first argument (var)
@@ -59,6 +62,7 @@ def check_var_symb(instr):
     check_symb_re(instr[1].text, symb_type)
 
 # Checks if XML arguments (var, symb, symb) are valid
+# @param instr XML instruction element
 def check_var_2symb(instr):
     check_xml_arguments(instr, 3) 
     # Check first argument (var)
@@ -72,6 +76,7 @@ def check_var_2symb(instr):
     check_symb_re(instr[2].text, symb_type)
 
 # Checks if XML arguments (var, type) are valid
+# @param instr XML instruction element
 def check_var_type(instr):
     check_xml_arguments(instr, 2) 
     # Check first argument (var)
@@ -82,6 +87,7 @@ def check_var_type(instr):
     check_type_re(instr[1].text)
 
 # Checks if XML arguments (label, symb, symb) are valid
+# @param instr XML instruction element
 def check_label_2symb(instr):
     check_xml_arguments(instr, 3) 
     # Check first argument (label)
@@ -95,6 +101,7 @@ def check_label_2symb(instr):
     check_symb_re(instr[2].text, symb_type)
 
 # Checks if XML without arguments is valid
+# @param instr XML instruction element
 def check_empty(instr):
     # check number of arguments
     if len(instr) != 0:
@@ -102,6 +109,7 @@ def check_empty(instr):
         exit(32)
 
 # Checks if XML argument (var) is valid
+# @param instr XML instruction element
 def check_var(instr):
     check_xml_arguments(instr, 1)
     # Check first argument (var)
@@ -109,6 +117,7 @@ def check_var(instr):
     check_var_re(instr[0].text)
 
 # Checks if XML argument (label) is valid
+# @param instr XML instruction element
 def check_label(instr):
     check_xml_arguments(instr, 1)
     # Check first argument (label)
@@ -116,6 +125,7 @@ def check_label(instr):
     check_label_re(instr[0].text)
 
 # Checks if XML argument (symb) is valid
+# @param instr XML instruction element
 def check_symb(instr):
     check_xml_arguments(instr, 1)
     # Check first argument (symb)
@@ -123,6 +133,7 @@ def check_symb(instr):
     check_symb_re(instr[0].text, symb_type)
 
 # Checks if XML argument (type) is valid
+# @param instr XML instruction element
 def check_type(instr):
     check_xml_arguments(instr, 1)
     # Check first argument (type)
@@ -130,6 +141,7 @@ def check_type(instr):
     check_type_re(instr[0].text)
 
 # Checks var name with regex
+# @param var_value Variable value
 def check_var_re(var_value):
     var_value = var_value.strip()
     if re.match(r"^(GF|LF|TF)@([a-zA-Z]|_|-|\$|&|%|\*|!|\?)([a-zA-Z0-9]|_|-|\$|&|%|\*|!|\?)*$", var_value) is None:
@@ -137,6 +149,8 @@ def check_var_re(var_value):
         exit(32)
 
 # Checks symb name with regex
+# @param symb_value Symb value
+# @param symb_type Symb type
 def check_symb_re(symb_value, symb_type):
     # if symb_value is None, we set it to empty string
     symb_value = "" if symb_value is None else symb_value.strip()
@@ -173,6 +187,7 @@ def check_symb_re(symb_value, symb_type):
                 exit(32)
 
 # Checks label name with regex
+# @param label_value Label value
 def check_label_re(label_value):
     label_value = label_value.strip()
     if re.match(r"^([a-zA-Z]|_|-|\$|&|%|\*|!|\?)([a-zA-Z0-9]|_|-|\$|&|%|\*|!|\?)*$", label_value) is None:
@@ -180,6 +195,7 @@ def check_label_re(label_value):
         exit(32)
 
 # Checks type name with regex
+# @param type_value Type value
 def check_type_re(type_value):
     type_value = type_value.strip()
     if re.match(r"^(int|string|bool)$", type_value) is None:
@@ -187,6 +203,8 @@ def check_type_re(type_value):
         exit(32)
 
 # Checks if XML attribute (type) is valid
+# @param arg XML argument element
+# @param regex Regex to match
 def check_xml_attrib_type(arg, regex):
     if "type" not in arg.attrib or re.match(regex, arg.attrib["type"]) is None:
         print("ERROR: Invalid or missing argument type", file=sys.stderr)
@@ -194,6 +212,8 @@ def check_xml_attrib_type(arg, regex):
     return arg.attrib["type"]
 
 # Checks if XML arguments are valid
+# @param instr XML instruction element
+# @param number_of_args Number of arguments
 def check_xml_arguments(instr, number_of_args):
     # check number of arguments
     if len(instr) != number_of_args:
