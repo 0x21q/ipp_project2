@@ -21,7 +21,7 @@ def check_instr(instr):
     if instr.tag != "instruction":
         print("ERROR: Element is not instruction", file=sys.stderr)
         exit(32)
-    if "order" not in instr.attrib or re.match(r"^[0-9]+$", instr.attrib["order"]) is None:
+    if "order" not in instr.attrib or re.match(r"^[1-9][0-9]*$", instr.attrib["order"]) is None:
         print("ERROR: Missing or invalid attribute (order)", file=sys.stderr)
         exit(32)
 
@@ -53,7 +53,7 @@ def check_instr(instr):
 # Checks if XML arguments (var, symb) are valid
 # @param instr XML instruction element
 def check_var_symb(instr):
-    check_xml_arguments(instr, 2)
+    instr = check_xml_arguments(instr, 2)
     # Check first argument (var)
     check_xml_attrib_type(instr[0], r"^(var)$")
     check_var_re(instr[0].text)
@@ -64,7 +64,7 @@ def check_var_symb(instr):
 # Checks if XML arguments (var, symb, symb) are valid
 # @param instr XML instruction element
 def check_var_2symb(instr):
-    check_xml_arguments(instr, 3) 
+    instr = check_xml_arguments(instr, 3) 
     # Check first argument (var)
     check_xml_attrib_type(instr[0], r"^(var)$")
     check_var_re(instr[0].text)
@@ -78,7 +78,7 @@ def check_var_2symb(instr):
 # Checks if XML arguments (var, type) are valid
 # @param instr XML instruction element
 def check_var_type(instr):
-    check_xml_arguments(instr, 2) 
+    instr = check_xml_arguments(instr, 2) 
     # Check first argument (var)
     check_xml_attrib_type(instr[0], r"^(var)$")
     check_var_re(instr[0].text)
@@ -89,7 +89,7 @@ def check_var_type(instr):
 # Checks if XML arguments (label, symb, symb) are valid
 # @param instr XML instruction element
 def check_label_2symb(instr):
-    check_xml_arguments(instr, 3) 
+    instr = check_xml_arguments(instr, 3) 
     # Check first argument (label)
     check_xml_attrib_type(instr[0], r"^(label)$")
     check_label_re(instr[0].text)
@@ -161,14 +161,14 @@ def check_symb_re(symb_value, symb_type):
                 exit(32)
         case "int":
             valid_int = False
-            if re.match(r"^[+-]?(0x|0X)[\da-fA-F]+(_[\da-fA-F]+)*$", symb_value) is None:
+            if re.match(r"^[+-]?(0x|0X)[\da-fA-F]+(_[\da-fA-F]+)*$", symb_value) is not None:
                 valid_int = True
             elif 'o' in symb_value or 'O' in symb_value:
-                if re.match(r"^[+-]?0(o|O)?[0-7]+(_[0-7]+)*$", symb_value) is None:
+                if re.match(r"^[+-]?0(o|O)?[0-7]+(_[0-7]+)*$", symb_value) is not None:
                     valid_int = True
-            elif re.match(r"^[+-]?0+[0-7]*(_[0-7]+)*$", symb_value) is None:
+            elif re.match(r"^[+-]?0+[0-7]*(_[0-7]+)*$", symb_value) is not None:
                 valid_int = True
-            elif re.match(r"^[+-]?[1-9][\d]*(_[\d]+)*$", symb_value) is None:
+            elif re.match(r"^[+-]?[1-9][\d]*(_[\d]+)*$", symb_value) is not None:
                 valid_int = True
             if not valid_int:
                 print("ERROR: Invalid integer value", file=sys.stderr)
@@ -233,3 +233,6 @@ def check_xml_arguments(instr, number_of_args):
         if instr.find("arg1") is None or instr.find("arg2") is None or instr.find("arg3") is None:
             print("ERROR: Instruction is missing an argument", file=sys.stderr)
             exit(32)
+
+    return sorted(instr, key=lambda arg: arg.tag)
+    
