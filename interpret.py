@@ -40,14 +40,14 @@ class Stack:
 class Program:
     # Program constructor
     def  __init__(self):
-        self.instructions = []
-        self._data_stack = Stack()
-        self._frame_stack = Stack()
-        self._call_stack = Stack()
-        self._global_frame = self.Frame(TypeFrame.GLOBAL) 
-        self._label_frame = self.Frame(TypeFrame.LABEL)
-        self._temp_frame = None
-        self._program_counter = None
+        self.instructions       : list          = []
+        self._data_stack        : Stack         = Stack()
+        self._frame_stack       : Stack         = Stack()
+        self._call_stack        : Stack         = Stack()
+        self._global_frame      : self.Frame    = self.Frame(TypeFrame.GLOBAL) 
+        self._label_frame       : self.Frame    = self.Frame(TypeFrame.LABEL)
+        self._temp_frame        : self.Frame    = None
+        self._program_counter   : int           = None
 
     # Add instruction to program
     # @param instr instruction to add
@@ -164,10 +164,10 @@ class Program:
     class Instruction:
         # Instruction constructor
         def __init__(self, address=None, opcode=None, order=None):
-            self.args = []
-            self._address: int = address
-            self._opcode: str = opcode
-            self._order: int = order
+            self.args       : list  = []
+            self._address   : int   = address
+            self._opcode    : str   = opcode
+            self._order     : int   = order
 
         # Get instruction address
         # @return Instruction address
@@ -249,16 +249,16 @@ class Program:
         class Argument:
             # Argument constructor
             def __init__(self, type=None, value=None):
-                self._type: str = type
+                self._type : str = type
                 match self._type:
                     case "int":
-                        self._value: int = set_int(value)
+                        self._value : int   = set_int(value)
                     case "bool":
-                        self._value: bool = True if value == "true" else False
+                        self._value : bool  = True if value == "true" else False
                     case "nil":
-                        self._value: None = None
+                        self._value : None  = None
                     case _:
-                        self._value: str = replace_escaped_chars(value)
+                        self._value : str   = replace_escaped_chars(value)
 
             # Get argument type
             # @return Argument type
@@ -847,8 +847,8 @@ class Program:
     class Frame:
         # Frame constructor
         def __init__(self,type):
-            self.vars = {}
-            self._type: TypeFrame = type
+            self.vars   : dict      = {}
+            self._type  : TypeFrame = type
 
         # Add variable to frame
         # @param var_value Variable value
@@ -882,8 +882,8 @@ class Program:
         class Var:
             # Variable constructor
             def __init__(self, type=None, value=None):
-                self._type: str = type
-                self._value = value
+                self._type  : str = type
+                self._value       = value
 
             # Get variable type
             # @return Variable type
@@ -893,7 +893,7 @@ class Program:
             # Set variable type
             # @param type Variable type
             def set_type(self, type):
-                self._type: str = type
+                self._type : str = type
 
             # Get frame type
             # @return Frame type
