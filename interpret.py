@@ -1183,13 +1183,6 @@ def sort_by_order(program):
     program.instructions.sort(key=lambda instr: int(instr.get_order()))
     return program
 
-# Prints program
-#def print_program(prg):
-    #for instr in prg.instructions:
-        #print(str(instr.get_address()) +": ",instr.get_opcode())
-        #for arg in instr.args:
-            #print(arg.get_type(), arg.get_value())
-
 # Main function
 if __name__ == "__main__":
     xml_root, input = parse_sc_args()
