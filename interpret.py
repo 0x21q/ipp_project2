@@ -1,5 +1,6 @@
 # IPP project 2
-# @brief Interpreter for IPPcode23 pseudo-assembly language
+# Interpreter for IPPcode23 pseudo-assembly language
+# @brief Main project file
 # @author Jakub Kratochvil (xkrato67)
 # @file interpret.py
 

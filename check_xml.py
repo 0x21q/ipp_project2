@@ -1,3 +1,8 @@
+# IPP project 2
+# @brief Implementation of XML checker
+# @author Jakub Kratochvil (xkrato67)
+# @file check_xml.py
+
 import sys, re
 
 # Checks if XML is valid
